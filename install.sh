@@ -6,6 +6,8 @@ install_vimrc_to_all='yes'
 
 bashrc_source=bashrc
 bashrc_dist=~/.bashrc
+gitconfig_source=gitconfig
+gitconfig_dist=~/.gitconfig
 nanorc_source=nanorc
 nanorc_dist=~/.nanorc
 nanorc_dist_all=/etc/nanorc
@@ -52,6 +54,7 @@ function confirm {
 # installation
 cp $bashrc_source $bashrc_dist
 echo "Remember to call 'source ~/.bashrc'!"
+cp $gitconfig_source $gitconfig_dist
 if confirm "Install nanorc for all users?"; then
   sudo cp $nanorc_source $nanorc_dist_all
 else

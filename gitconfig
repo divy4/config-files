@@ -1,0 +1,34 @@
+[user]
+  name = Dan Ivy
+  email = danivy4@gmail.com
+  username = divy4
+[core]
+  editor = vim
+  encoding = utf-8
+  pager = less -X
+[alias]
+  lg = log -20 --pretty=format:'%Cred%h%Creset - %s %Cgreen(%cr %an)%Creset%C(yellow)%d%Creset' --abbrev-commit --date=relative
+  lgr = log --graph --decorate --pretty=oneline --abbrev-commit
+[branch]
+  autoSetupMerge = true
+  autoSetupRebase = always
+[color]
+  ui = auto
+  interactive = auto
+[diff]
+  algorithm = histogram
+  compactionHeuristic = true
+  wsErrorHighlight = all
+  renameLimit = 3000
+[fetch]
+  prune = true
+[pull]
+  rebase = true
+[push]
+  default = current
+[rebase]
+  autoStash = true
+[status]
+  showUntrackedFiles = all
+[merge]
+  conflictstyle = diff3
