@@ -1,20 +1,26 @@
 [user]
   name = Dan Ivy
   email = danivy4@gmail.com
-  username = divy4
+  signingkey = fail!
 [core]
   editor = vim
   encoding = utf-8
   pager = less -X
+[gpg]
+  program = gpg2
+
 [alias]
   lg = log -20 --pretty=format:'%Cred%h%Creset - %s %Cgreen(%cr %an)%Creset%C(yellow)%d%Creset' --abbrev-commit --date=relative
   lgr = log --graph --decorate --pretty=oneline --abbrev-commit
-[branch]
-  autoSetupMerge = true
-  autoSetupRebase = always
 [color]
   ui = auto
   interactive = auto
+
+[branch]
+  autoSetupMerge = true
+  autoSetupRebase = always
+[commit]
+  gpgsign = true
 [diff]
   algorithm = histogram
   compactionHeuristic = true
@@ -22,6 +28,8 @@
   renameLimit = 3000
 [fetch]
   prune = true
+[merge]
+  conflictstyle = diff3
 [pull]
   rebase = true
 [push]
@@ -30,5 +38,5 @@
   autoStash = true
 [status]
   showUntrackedFiles = all
-[merge]
-  conflictstyle = diff3
+
+
