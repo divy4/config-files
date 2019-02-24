@@ -2,6 +2,12 @@
 # ~/.bashrc
 #
 
+# fix gpg
+export GPG_TTY=$(tty)
+if [[ -n "$SSH_CONNECTION" ]]; then
+  export PINENTRY_USER_DATA="USE_CURSES=1"
+fi
+
 # set vim as editor
 export VISUAL=vim
 
