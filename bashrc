@@ -14,6 +14,9 @@ export VISUAL=vim
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
+# enable docker buildkit
+export DOCKER_BUILDKIT=1
+
 # prompt
 PS1='\[\033[32m\]\u@\h \[\033[33m\]\W\[\033[0m\] \$ '
 
