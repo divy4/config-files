@@ -9,6 +9,8 @@ NANORC_SOURCE=nanorc
 NANORC_DESTS=(~/.nanorc /etc/nanorc /etc/nano/nanorc)
 VIMRC_SOURCE=vimrc
 VIMRC_DESTS=(~/.vimrc /etc/vimrc /etc/vim/vimrc)
+XINITRC_SOURCE=xinitrc
+XINITRC_DESTS=(~/.xinitrc /etc/X11/xinit/xinitrc)
 
 # functions
 
@@ -100,4 +102,4 @@ install "$BASHRC_SOURCE" "${BASHRC_DESTS[@]}"
 install "$GITCONFIG_SOURCE" "${GITCONFIG_DESTS[@]}"
 install "$NANORC_SOURCE" "${NANORC_DESTS[@]}"
 install "$VIMRC_SOURCE" "${VIMRC_DESTS[@]}"
-
+install "$XINITRC_SOURCE" "${XINITRC_DESTS[@]}"
