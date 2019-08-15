@@ -3,6 +3,8 @@
 # settings
 BASHRC_SOURCE=bashrc
 BASHRC_DESTS=(~/.bashrc)
+FLUXBOX_MENU_SOURCE=fluxbox/menu
+FLUXBOX_MENU_DESTS=(~/.fluxbox/menu)
 GITCONFIG_SOURCE=gitconfig
 GITCONFIG_DESTS=(~/.gitconfig)
 NANORC_SOURCE=nanorc
@@ -99,6 +101,7 @@ function install {
 
 # installation
 install "$BASHRC_SOURCE" "${BASHRC_DESTS[@]}"
+install "$FLUXBOX_MENU_SOURCE" "${FLUXBOX_MENU_DESTS[@]}"
 install "$GITCONFIG_SOURCE" "${GITCONFIG_DESTS[@]}"
 install "$NANORC_SOURCE" "${NANORC_DESTS[@]}"
 install "$VIMRC_SOURCE" "${VIMRC_DESTS[@]}"
