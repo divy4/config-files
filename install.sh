@@ -16,7 +16,16 @@ XINITRC_DESTS=(~/.xinitrc /etc/X11/xinit/xinitrc)
 XRESOURCES_SOURCE=Xresources
 XRESOURCES_DESTS=(~/.Xresources)
 
-# functions
+function main() {
+  install "$BASHRC_SOURCE" "${BASHRC_DESTS[@]}"
+  install "$FLUXBOX_MENU_SOURCE" "${FLUXBOX_MENU_DESTS[@]}"
+  install "$GITCONFIG_SOURCE" "${GITCONFIG_DESTS[@]}"
+  install "$NANORC_SOURCE" "${NANORC_DESTS[@]}"
+  install "$VIMRC_SOURCE" "${VIMRC_DESTS[@]}"
+  install "$XINITRC_SOURCE" "${XINITRC_DESTS[@]}"
+  install "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
+}
+
 
 function lookup {
   local x="$1"
@@ -100,12 +109,4 @@ function install {
   fi
 }
 
-
-# installation
-install "$BASHRC_SOURCE" "${BASHRC_DESTS[@]}"
-install "$FLUXBOX_MENU_SOURCE" "${FLUXBOX_MENU_DESTS[@]}"
-install "$GITCONFIG_SOURCE" "${GITCONFIG_DESTS[@]}"
-install "$NANORC_SOURCE" "${NANORC_DESTS[@]}"
-install "$VIMRC_SOURCE" "${VIMRC_DESTS[@]}"
-install "$XINITRC_SOURCE" "${XINITRC_DESTS[@]}"
-install "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
+main "$@"
