@@ -3,12 +3,18 @@
 # settings
 BASHRC_SOURCE=bashrc
 BASHRC_DESTS=(~/.bashrc)
+FLUXBOX_MENU_SOURCE=fluxbox/menu
+FLUXBOX_MENU_DESTS=(~/.fluxbox/menu)
 GITCONFIG_SOURCE=gitconfig
 GITCONFIG_DESTS=(~/.gitconfig)
 NANORC_SOURCE=nanorc
 NANORC_DESTS=(~/.nanorc /etc/nanorc /etc/nano/nanorc)
 VIMRC_SOURCE=vimrc
 VIMRC_DESTS=(~/.vimrc /etc/vimrc /etc/vim/vimrc)
+XINITRC_SOURCE=xinitrc
+XINITRC_DESTS=(~/.xinitrc /etc/X11/xinit/xinitrc)
+XRESOURCES_SOURCE=Xresources
+XRESOURCES_DESTS=(~/.Xresources)
 
 # functions
 
@@ -97,7 +103,9 @@ function install {
 
 # installation
 install "$BASHRC_SOURCE" "${BASHRC_DESTS[@]}"
+install "$FLUXBOX_MENU_SOURCE" "${FLUXBOX_MENU_DESTS[@]}"
 install "$GITCONFIG_SOURCE" "${GITCONFIG_DESTS[@]}"
 install "$NANORC_SOURCE" "${NANORC_DESTS[@]}"
 install "$VIMRC_SOURCE" "${VIMRC_DESTS[@]}"
-
+install "$XINITRC_SOURCE" "${XINITRC_DESTS[@]}"
+install "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"

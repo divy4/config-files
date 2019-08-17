@@ -1,0 +1,5 @@
+xterm*background: black
+xterm*faceName: Ubuntu Mono
+xterm*faceSize: 12
+xterm*foreground: white
+xterm*renderFont: true
