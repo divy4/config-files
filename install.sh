@@ -26,26 +26,15 @@ function main() {
   install "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
 }
 
-
-function lookup {
-  local x="$1"
-  local arr=( "${@:2}" )
-  local output=-1
-  for index in "${!arr[@]}"; do
-    if [[ "${x}" = "${arr[$index]}" ]]; then
-      output=$index
-      break
-    fi
-  done
-  return $output
-}
-
-function is_yes {
-  return $([[ "${1,,}" == y\(es\)? ]])
-}
-
-function is_no {
-  return $([[ "${1,,}" == no? ]])
+function install {
+  local source="$1"
+  local dest_options=( "${@:2}" )
+  if confirm "Install $source?"; then
+    select_option "Select where to install $source:" "${dest_options[@]}"
+    local dest="${dest_options[$?]}"
+    echo "Copying $source to $dest"
+    #cp $source $dest
+  fi
 }
 
 function confirm {
@@ -96,15 +85,25 @@ function select_option {
   return $!
 }
 
-function install {
-  local source="$1"
-  local dest_options=( "${@:2}" )
-  if confirm "Install $source?"; then
-    select_option "Select where to install $source:" "${dest_options[@]}"
-    local dest="${dest_options[$?]}"
-    echo "Copying $source to $dest"
-    #cp $source $dest
-  fi
+function lookup {
+  local x="$1"
+  local arr=( "${@:2}" )
+  local output=-1
+  for index in "${!arr[@]}"; do
+    if [[ "${x}" = "${arr[$index]}" ]]; then
+      output=$index
+      break
+    fi
+  done
+  return $output
+}
+
+function is_yes {
+  return $([[ "${1,,}" == y\(es\)? ]])
+}
+
+function is_no {
+  return $([[ "${1,,}" == no? ]])
 }
 
 main "$@"
