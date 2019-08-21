@@ -41,13 +41,11 @@ function lookup {
 }
 
 function is_yes {
-  local input="$1"
-  return $([ "${input,,}" == 'y' ] || [ "${input,,}" == "yes" ])
+  return $([[ "${1,,}" == y\(es\)? ]])
 }
 
 function is_no {
-  local input="$1"
-  return $([ "${input,,}" == 'n' ] || [ "${input,,}" == "no" ])
+  return $([[ "${1,,}" == no? ]])
 }
 
 function confirm {
