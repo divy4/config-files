@@ -103,7 +103,7 @@ function install {
     select_option "Select where to install $source:" "${dest_options[@]}"
     local dest="${dest_options[$?]}"
     echo "Copying $source to $dest"
-    cp $source $dest
+    #cp $source $dest
   fi
 }
 
