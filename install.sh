@@ -17,16 +17,28 @@ XRESOURCES_SOURCE=Xresources
 XRESOURCES_DESTS=(~/.Xresources)
 
 function main() {
-  install "$BASHRC_SOURCE" "${BASHRC_DESTS[@]}"
-  install "$FLUXBOX_MENU_SOURCE" "${FLUXBOX_MENU_DESTS[@]}"
-  install "$GITCONFIG_SOURCE" "${GITCONFIG_DESTS[@]}"
-  install "$NANORC_SOURCE" "${NANORC_DESTS[@]}"
-  install "$VIMRC_SOURCE" "${VIMRC_DESTS[@]}"
-  install "$XINITRC_SOURCE" "${XINITRC_DESTS[@]}"
-  install "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
+  install test 1234 5678
+
+  install_old "$BASHRC_SOURCE" "${BASHRC_DESTS[@]}"
+  install_old "$FLUXBOX_MENU_SOURCE" "${FLUXBOX_MENU_DESTS[@]}"
+  install_old "$GITCONFIG_SOURCE" "${GITCONFIG_DESTS[@]}"
+  install_old "$NANORC_SOURCE" "${NANORC_DESTS[@]}"
+  install_old "$VIMRC_SOURCE" "${VIMRC_DESTS[@]}"
+  install_old "$XINITRC_SOURCE" "${XINITRC_DESTS[@]}"
+  install_old "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
 }
 
-function install {
+function install () {
+  local name method metadata
+  name="$1"
+  method="$2"
+  metadata="${@:3}"
+  if confirm "Install $name"; then
+    "$method" "${metadata[@]}"
+  fi
+}
+
+function install_old {
   local source="$1"
   local dest_options=( "${@:2}" )
   if confirm "Install $source?"; then
