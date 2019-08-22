@@ -17,15 +17,15 @@ XRESOURCES_SOURCE=Xresources
 XRESOURCES_DESTS=(~/.Xresources)
 
 function main() {
-  install test 1234 5678
+  install test echo 1234 5678
 
-  install_old "$BASHRC_SOURCE" "${BASHRC_DESTS[@]}"
-  install_old "$FLUXBOX_MENU_SOURCE" "${FLUXBOX_MENU_DESTS[@]}"
-  install_old "$GITCONFIG_SOURCE" "${GITCONFIG_DESTS[@]}"
-  install_old "$NANORC_SOURCE" "${NANORC_DESTS[@]}"
-  install_old "$VIMRC_SOURCE" "${VIMRC_DESTS[@]}"
-  install_old "$XINITRC_SOURCE" "${XINITRC_DESTS[@]}"
-  install_old "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
+#  install_old "$BASHRC_SOURCE" "${BASHRC_DESTS[@]}"
+#  install_old "$FLUXBOX_MENU_SOURCE" "${FLUXBOX_MENU_DESTS[@]}"
+#  install_old "$GITCONFIG_SOURCE" "${GITCONFIG_DESTS[@]}"
+#  install_old "$NANORC_SOURCE" "${NANORC_DESTS[@]}"
+#  install_old "$VIMRC_SOURCE" "${VIMRC_DESTS[@]}"
+#  install_old "$XINITRC_SOURCE" "${XINITRC_DESTS[@]}"
+#  install_old "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
 }
 
 function install () {
@@ -47,25 +47,6 @@ function install_old {
     echo "Copying $source to $dest"
     #cp $source $dest
   fi
-}
-
-function confirm {
-  local msg="$1"
-  if [ "$msg" != "" ]; then
-    msg="$msg "
-  fi
-  local output=-1
-  while [ $output -eq -1 ]; do
-    echo -n "$msg(y/n) "
-    local input
-    read input
-    if is_yes "$input"; then
-      output=0
-    elif is_no "$input"; then
-      output=1
-    fi
-  done
-  return $output
 }
 
 function select_option {
@@ -110,12 +91,31 @@ function lookup {
   return $output
 }
 
+function confirm {
+  local message output input
+  message="$1"
+  if [ "$message" != "" ]; then
+    message="$message "
+  fi
+  output=-1
+  while [[ "$output" -eq -1 ]]; do
+    echo -n "$message(y/n) "
+    read input
+    if is_yes "$input"; then
+      output=0
+    elif is_no "$input"; then
+      output=1
+    fi
+  done
+  return "$output"
+}
+
 function is_yes {
-  return $([[ "${1,,}" == y\(es\)? ]])
+  return $([[ "${1,,}" =~ ^y(es)?$ ]])
 }
 
 function is_no {
-  return $([[ "${1,,}" == no? ]])
+  return $([[ "${1,,}" =~ ^no?$ ]])
 }
 
 main "$@"
