@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -e
 
 # settings
 BASHRC_SOURCE=bashrc
@@ -16,98 +18,82 @@ XINITRC_DESTS=(~/.xinitrc /etc/X11/xinit/xinitrc)
 XRESOURCES_SOURCE=Xresources
 XRESOURCES_DESTS=(~/.Xresources)
 
-function main() {
-  install test echo 1234 5678
-
-#  install_old "$BASHRC_SOURCE" "${BASHRC_DESTS[@]}"
-#  install_old "$FLUXBOX_MENU_SOURCE" "${FLUXBOX_MENU_DESTS[@]}"
-#  install_old "$GITCONFIG_SOURCE" "${GITCONFIG_DESTS[@]}"
-#  install_old "$NANORC_SOURCE" "${NANORC_DESTS[@]}"
-#  install_old "$VIMRC_SOURCE" "${VIMRC_DESTS[@]}"
-#  install_old "$XINITRC_SOURCE" "${XINITRC_DESTS[@]}"
-#  install_old "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
+function main {
+  install bashrc        install_single_file "$BASHRC_SOURCE"        "${BASHRC_DESTS[@]}"
+  install fluxbox_menu  install_single_file "$FLUXBOX_MENU_SOURCE"  "${FLUXBOX_MENU_DESTS[@]}"
+  install gitconfig     install_single_file "$GITCONFIG_SOURCE"     "${GITCONFIG_DESTS[@]}"
+  install nanorc        install_single_file "$NANORC_SOURCE"        "${NANORC_DESTS[@]}"
+  install vimrc         install_single_file "$VIMRC_SOURCE"         "${VIMRC_DESTS[@]}"
+  install xinitrc       install_single_file "$XINITRC_SOURCE"       "${XINITRC_DESTS[@]}"
+  install Xresources    install_single_file "$XRESOURCES_SOURCE"    "${XRESOURCES_DESTS[@]}"
 }
 
-function install () {
-  local name method metadata
+function install {
+  local name command args
   name="$1"
-  method="$2"
-  metadata="${@:3}"
+  command="$2"
+  args=("${@:3}")
   if confirm "Install $name"; then
-    "$method" "${metadata[@]}"
+    "$command" "${args[@]}"
   fi
 }
 
-function install_old {
-  local source="$1"
-  local dest_options=( "${@:2}" )
-  if confirm "Install $source?"; then
-    select_option "Select where to install $source:" "${dest_options[@]}"
-    local dest="${dest_options[$?]}"
-    echo "Copying $source to $dest"
-    #cp $source $dest
-  fi
+function install_single_file() {
+  local source targets target
+  source="$1"
+  targets=("${@:2}")
+  target="$(select_option "Select where to install $source:" "${targets[@]}")"
+  cp_sudo_on_fail "$source" "$target"
 }
 
 function select_option {
-  local msg="$1"
-  local options=( "${@:2}" )
-  if [ ${#options[@]} -eq 0 ]; then
-    (>&2 echo "select_option requires at least 2 arguments")
+  local message options selection
+  message="$1"
+  options=("${@:2}")
+  if [ "${#options[@]}" -eq 0 ]; then
+    (>&2 echo 'select_option requires at least 1 argument')
     exit 1
-  elif [ ${#options[@]} -eq 1 ]; then
-
-    return 0
+  elif [ "${#options[@]}" -eq 1 ]; then
+    selection="${options[0]}"
+  else
+    echo_tty "$message"
+    select selection in "${options[@]}"; do
+      case "$selection" in
+        "")
+          echo_tty "Invalid option"
+          ;;
+        *)
+          break
+          ;;
+      esac
+    done
   fi
-  if [ "$msg" != "" ]; then
-    echo "$msg"
-  fi
-  local num=0
-  local selection=""
-  select selection in "${options[@]}"; do
-    case "$selection" in
-      "")
-        echo "Invalid option"
-        ;;
-      *)
-        break
-        ;;
-    esac
-  done
-  lookup "$selection" "${options[@]}"
-  return $!
+  echo "$selection"
 }
 
-function lookup {
-  local x="$1"
-  local arr=( "${@:2}" )
-  local output=-1
-  for index in "${!arr[@]}"; do
-    if [[ "${x}" = "${arr[$index]}" ]]; then
-      output=$index
-      break
-    fi
-  done
-  return $output
+function cp_sudo_on_fail {
+  if ! cp "$@" && confirm 'Copy failed, elevate to sudo?'; then
+    sudo cp "$@"
+  fi
 }
 
 function confirm {
-  local message output input
+  local message answer input
   message="$1"
   if [ "$message" != "" ]; then
     message="$message "
   fi
-  output=-1
-  while [[ "$output" -eq -1 ]]; do
-    echo -n "$message(y/n) "
+  answer=-1
+  while [[ "$answer" -eq -1 ]]; do
+    echo_tty -n "$message(y/n) "
     read input
     if is_yes "$input"; then
-      output=0
+      answer=0
     elif is_no "$input"; then
-      output=1
+      answer=1
     fi
   done
-  return "$output"
+  return "$answer"
 }
 
 function is_yes {
@@ -116,6 +102,14 @@ function is_yes {
 
 function is_no {
   return $([[ "${1,,}" =~ ^no?$ ]])
+}
+
+function echo_tty {
+  echo "$@" > /dev/tty
+}
+
+function echo_err {
+  >&2 echo "$@"
 }
 
 main "$@"
