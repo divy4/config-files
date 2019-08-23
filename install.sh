@@ -19,13 +19,13 @@ XRESOURCES_SOURCE=Xresources
 XRESOURCES_DESTS=(~/.Xresources)
 
 function main {
-  install bashrc        install_single_file "$BASHRC_SOURCE"        "${BASHRC_DESTS[@]}"
-  install fluxbox_menu  install_single_file "$FLUXBOX_MENU_SOURCE"  "${FLUXBOX_MENU_DESTS[@]}"
-  install gitconfig     install_single_file "$GITCONFIG_SOURCE"     "${GITCONFIG_DESTS[@]}"
-  install nanorc        install_single_file "$NANORC_SOURCE"        "${NANORC_DESTS[@]}"
-  install vimrc         install_single_file "$VIMRC_SOURCE"         "${VIMRC_DESTS[@]}"
-  install xinitrc       install_single_file "$XINITRC_SOURCE"       "${XINITRC_DESTS[@]}"
-  install Xresources    install_single_file "$XRESOURCES_SOURCE"    "${XRESOURCES_DESTS[@]}"
+  install bashrc        install_file "$BASHRC_SOURCE"        "${BASHRC_DESTS[@]}"
+  install fluxbox_menu  install_file "$FLUXBOX_MENU_SOURCE"  "${FLUXBOX_MENU_DESTS[@]}"
+  install gitconfig     install_file "$GITCONFIG_SOURCE"     "${GITCONFIG_DESTS[@]}"
+  install nanorc        install_file "$NANORC_SOURCE"        "${NANORC_DESTS[@]}"
+  install vimrc         install_file "$VIMRC_SOURCE"         "${VIMRC_DESTS[@]}"
+  install xinitrc       install_file "$XINITRC_SOURCE"       "${XINITRC_DESTS[@]}"
+  install Xresources    install_file "$XRESOURCES_SOURCE"    "${XRESOURCES_DESTS[@]}"
 }
 
 function install {
@@ -38,7 +38,7 @@ function install {
   fi
 }
 
-function install_single_file() {
+function install_file() {
   local source targets target
   source="$1"
   targets=("${@:2}")
@@ -86,7 +86,7 @@ function confirm {
   answer=-1
   while [[ "$answer" -eq -1 ]]; do
     echo_tty -n "$message(y/n) "
-    read input
+    read -r input
     if is_yes "$input"; then
       answer=0
     elif is_no "$input"; then
@@ -97,11 +97,11 @@ function confirm {
 }
 
 function is_yes {
-  return $([[ "${1,,}" =~ ^y(es)?$ ]])
+  return "$([[ "${1,,}" =~ ^y(es)?$ ]])"
 }
 
 function is_no {
-  return $([[ "${1,,}" =~ ^no?$ ]])
+  return "$([[ "${1,,}" =~ ^no?$ ]])"
 }
 
 function echo_tty {
