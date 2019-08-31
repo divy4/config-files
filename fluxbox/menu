@@ -18,6 +18,7 @@
   [encoding] {UTF-8}
   [exec] (xterm) {xterm}
   [exec] (chromium) {chromium}
+  [exec] (deluge) {deluge}
   [submenu] (Fluxbox menu)
     [config] (Configure)
     [submenu] (System Styles) {Choose a style...}
