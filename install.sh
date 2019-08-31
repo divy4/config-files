@@ -1,10 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -e
 
 # settings
 BASHRC_SOURCE=bashrc
 BASHRC_DESTS=(~/.bashrc)
-FLUXBOX_MENU_SOURCE=fluxbox/menu
-FLUXBOX_MENU_DESTS=(~/.fluxbox/menu)
+FLUXBOX_SOURCE=fluxbox
+FLUXBOX_DESTS=(~/.fluxbox)
 GITCONFIG_SOURCE=gitconfig
 GITCONFIG_DESTS=(~/.gitconfig)
 NANORC_SOURCE=nanorc
@@ -16,96 +18,110 @@ XINITRC_DESTS=(~/.xinitrc /etc/X11/xinit/xinitrc)
 XRESOURCES_SOURCE=Xresources
 XRESOURCES_DESTS=(~/.Xresources)
 
-# functions
-
-function lookup {
-  local x="$1"
-  local arr=( "${@:2}" )
-  local output=-1
-  for index in "${!arr[@]}"; do
-    if [[ "${x}" = "${arr[$index]}" ]]; then
-      output=$index
-      break
-    fi
-  done
-  return $output
-}
-
-function is_yes {
-  local input="$1"
-  return $([ "${input,,}" == 'y' ] || [ "${input,,}" == "yes" ])
-}
-
-function is_no {
-  local input="$1"
-  return $([ "${input,,}" == 'n' ] || [ "${input,,}" == "no" ])
-}
-
-function confirm {
-  local msg="$1"
-  if [ "$msg" != "" ]; then
-    msg="$msg "
-  fi
-  local output=-1
-  while [ $output -eq -1 ]; do
-    echo -n "$msg(y/n) "
-    local input
-    read input
-    if is_yes "$input"; then
-      output=0
-    elif is_no "$input"; then
-      output=1
-    fi
-  done
-  return $output
-}
-
-function select_option {
-  local msg="$1"
-  local options=( "${@:2}" )
-  if [ ${#options[@]} -eq 0 ]; then
-    (>&2 echo "select_option requires at least 2 arguments")
-    exit 1
-  elif [ ${#options[@]} -eq 1 ]; then
-
-    return 0
-  fi
-  if [ "$msg" != "" ]; then
-    echo "$msg"
-  fi
-  local num=0
-  local selection=""
-  select selection in "${options[@]}"; do
-    case "$selection" in
-      "")
-        echo "Invalid option"
-        ;;
-      *)
-        break
-        ;;
-    esac
-  done
-  lookup "$selection" "${options[@]}"
-  return $!
+function main {
+  install bashrc      install_file      "$BASHRC_SOURCE"     "${BASHRC_DESTS[@]}"
+  install fluxbox     install_directory "$FLUXBOX_SOURCE"    "${FLUXBOX_DESTS[@]}"
+  install gitconfig   install_file      "$GITCONFIG_SOURCE"  "${GITCONFIG_DESTS[@]}"
+  install nanorc      install_file      "$NANORC_SOURCE"     "${NANORC_DESTS[@]}"
+  install vimrc       install_file      "$VIMRC_SOURCE"      "${VIMRC_DESTS[@]}"
+  install xinitrc     install_file      "$XINITRC_SOURCE"    "${XINITRC_DESTS[@]}"
+  install Xresources  install_file      "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
 }
 
 function install {
-  local source="$1"
-  local dest_options=( "${@:2}" )
-  if confirm "Install $source?"; then
-    select_option "Select where to install $source:" "${dest_options[@]}"
-    local dest="${dest_options[$?]}"
-    echo "Copying $source to $dest"
-    cp $source $dest
+  local name command args
+  name="$1"
+  command="$2"
+  args=("${@:3}")
+  if confirm "Install $name"; then
+    "$command" "${args[@]}"
   fi
 }
 
+function install_file {
+  local source targets target
+  source="$1"
+  targets=("${@:2}")
+  target="$(select_option "Select where to install:" "${targets[@]}")"
+  cp_sudo_on_fail "$source" "$target"
+}
 
-# installation
-install "$BASHRC_SOURCE" "${BASHRC_DESTS[@]}"
-install "$FLUXBOX_MENU_SOURCE" "${FLUXBOX_MENU_DESTS[@]}"
-install "$GITCONFIG_SOURCE" "${GITCONFIG_DESTS[@]}"
-install "$NANORC_SOURCE" "${NANORC_DESTS[@]}"
-install "$VIMRC_SOURCE" "${VIMRC_DESTS[@]}"
-install "$XINITRC_SOURCE" "${XINITRC_DESTS[@]}"
-install "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
+function install_directory {
+  local source targets target
+  source="$1"
+  targets=("${@:2}")
+  target="$(select_option "Select where to install:" "${targets[@]}")"
+  cp_sudo_on_fail -r "$source/"* "$target"
+}
+
+function select_option {
+  local message options selection
+  message="$1"
+  options=("${@:2}")
+  if [ "${#options[@]}" -eq 0 ]; then
+    (>&2 echo 'select_option requires at least 1 argument')
+    exit 1
+  elif [ "${#options[@]}" -eq 1 ]; then
+    selection="${options[0]}"
+  else
+    echo_tty "$message"
+    select selection in "${options[@]}"; do
+      case "$selection" in
+        "")
+          echo_tty "Invalid option"
+          ;;
+        *)
+          break
+          ;;
+      esac
+    done
+  fi
+  echo "$selection"
+}
+
+function cp_sudo_on_fail {
+  if ! cp "$@" && confirm 'Copy failed, elevate to sudo?'; then
+    sudo cp "$@"
+  fi
+}
+
+function confirm {
+  local message answer input
+  message="$1"
+  if [ "$message" != "" ]; then
+    message="$message "
+  fi
+  answer=-1
+  while [[ "$answer" -eq -1 ]]; do
+    echo_tty -n "$message(y/n) "
+    read -r input
+    if is_yes "$input"; then
+      answer=0
+    elif is_no "$input"; then
+      answer=1
+    fi
+  done
+  return "$answer"
+}
+
+function is_yes {
+  if [[ ! "${1,,}" =~ ^y(es)?$ ]]; then
+    return 1
+  fi
+}
+
+function is_no {
+  if [[ ! "${1,,}" =~ ^no?$ ]]; then
+    return 1
+  fi
+}
+
+function echo_tty {
+  echo "$@" > /dev/tty
+}
+
+function echo_err {
+  >&2 echo "$@"
+}
+
+main "$@"
