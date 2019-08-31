@@ -19,13 +19,13 @@ XRESOURCES_SOURCE=Xresources
 XRESOURCES_DESTS=(~/.Xresources)
 
 function main {
-  install bashrc      install_file "$BASHRC_SOURCE"     "${BASHRC_DESTS[@]}"
-  install fluxbox     install_file "$FLUXBOX_SOURCE"    "${FLUXBOX_DESTS[@]}"
-  install gitconfig   install_file "$GITCONFIG_SOURCE"  "${GITCONFIG_DESTS[@]}"
-  install nanorc      install_file "$NANORC_SOURCE"     "${NANORC_DESTS[@]}"
-  install vimrc       install_file "$VIMRC_SOURCE"      "${VIMRC_DESTS[@]}"
-  install xinitrc     install_file "$XINITRC_SOURCE"    "${XINITRC_DESTS[@]}"
-  install Xresources  install_file "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
+  install bashrc      install_file      "$BASHRC_SOURCE"     "${BASHRC_DESTS[@]}"
+  install fluxbox     install_directory "$FLUXBOX_SOURCE"    "${FLUXBOX_DESTS[@]}"
+  install gitconfig   install_file      "$GITCONFIG_SOURCE"  "${GITCONFIG_DESTS[@]}"
+  install nanorc      install_file      "$NANORC_SOURCE"     "${NANORC_DESTS[@]}"
+  install vimrc       install_file      "$VIMRC_SOURCE"      "${VIMRC_DESTS[@]}"
+  install xinitrc     install_file      "$XINITRC_SOURCE"    "${XINITRC_DESTS[@]}"
+  install Xresources  install_file      "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
 }
 
 function install {
@@ -51,7 +51,7 @@ function install_directory {
   source="$1"
   targets=("${@:2}")
   target="$(select_option "Select where to install:" "${targets[@]}")"
-  cp_sudo_on_fail -r "$source/*" "$target"
+  cp_sudo_on_fail -r "$source/"* "$target"
 }
 
 function select_option {
@@ -105,11 +105,15 @@ function confirm {
 }
 
 function is_yes {
-  return "$([[ "${1,,}" =~ ^y(es)?$ ]])"
+  if [[ ! "${1,,}" =~ ^y(es)?$ ]]; then
+    return 1
+  fi
 }
 
 function is_no {
-  return "$([[ "${1,,}" =~ ^no?$ ]])"
+  if [[ ! "${1,,}" =~ ^no?$ ]]; then
+    return 1
+  fi
 }
 
 function echo_tty {
