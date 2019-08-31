@@ -5,8 +5,8 @@ set -e
 # settings
 BASHRC_SOURCE=bashrc
 BASHRC_DESTS=(~/.bashrc)
-FLUXBOX_MENU_SOURCE=fluxbox/menu
-FLUXBOX_MENU_DESTS=(~/.fluxbox/menu)
+FLUXBOX_SOURCE=fluxbox
+FLUXBOX_DESTS=(~/.fluxbox)
 GITCONFIG_SOURCE=gitconfig
 GITCONFIG_DESTS=(~/.gitconfig)
 NANORC_SOURCE=nanorc
@@ -19,13 +19,13 @@ XRESOURCES_SOURCE=Xresources
 XRESOURCES_DESTS=(~/.Xresources)
 
 function main {
-  install bashrc        install_file "$BASHRC_SOURCE"        "${BASHRC_DESTS[@]}"
-  install fluxbox_menu  install_file "$FLUXBOX_MENU_SOURCE"  "${FLUXBOX_MENU_DESTS[@]}"
-  install gitconfig     install_file "$GITCONFIG_SOURCE"     "${GITCONFIG_DESTS[@]}"
-  install nanorc        install_file "$NANORC_SOURCE"        "${NANORC_DESTS[@]}"
-  install vimrc         install_file "$VIMRC_SOURCE"         "${VIMRC_DESTS[@]}"
-  install xinitrc       install_file "$XINITRC_SOURCE"       "${XINITRC_DESTS[@]}"
-  install Xresources    install_file "$XRESOURCES_SOURCE"    "${XRESOURCES_DESTS[@]}"
+  install bashrc      install_file "$BASHRC_SOURCE"     "${BASHRC_DESTS[@]}"
+  install fluxbox     install_file "$FLUXBOX_SOURCE"    "${FLUXBOX_DESTS[@]}"
+  install gitconfig   install_file "$GITCONFIG_SOURCE"  "${GITCONFIG_DESTS[@]}"
+  install nanorc      install_file "$NANORC_SOURCE"     "${NANORC_DESTS[@]}"
+  install vimrc       install_file "$VIMRC_SOURCE"      "${VIMRC_DESTS[@]}"
+  install xinitrc     install_file "$XINITRC_SOURCE"    "${XINITRC_DESTS[@]}"
+  install Xresources  install_file "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
 }
 
 function install {
@@ -38,12 +38,20 @@ function install {
   fi
 }
 
-function install_file() {
+function install_file {
   local source targets target
   source="$1"
   targets=("${@:2}")
-  target="$(select_option "Select where to install $source:" "${targets[@]}")"
+  target="$(select_option "Select where to install:" "${targets[@]}")"
   cp_sudo_on_fail "$source" "$target"
+}
+
+function install_directory {
+  local source targets target
+  source="$1"
+  targets=("${@:2}")
+  target="$(select_option "Select where to install:" "${targets[@]}")"
+  cp_sudo_on_fail -r "$source/*" "$target"
 }
 
 function select_option {
