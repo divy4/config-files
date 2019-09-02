@@ -19,6 +19,8 @@ function install_bashrc {
 
 function install_fluxbox {
   copy_directory fluxbox ~/.fluxbox
+  copy_file fluxbox_xinitrc ~/.xinitrc
+  copy_file fluxbox_Xresources ~/.Xresources
 }
 
 function install_gitconfig {
@@ -31,14 +33,6 @@ function install_nanorc {
 
 function install_vimrc {
   copy_file vimrc ~/.vimrc /etc/vimrc /etc/vim/vimrc
-}
-
-function install_xinitrc {
-  copy_file xinitrc ~/.xinitrc
-}
-
-function install_Xresources {
-  copy_file Xresources ~/.Xresources
 }
 
 function get_install_functions {
