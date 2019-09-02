@@ -2,43 +2,48 @@
 
 set -e
 
-# settings
-BASHRC_SOURCE=bashrc
-BASHRC_DESTS=(~/.bashrc)
-FLUXBOX_SOURCE=fluxbox
-FLUXBOX_DESTS=(~/.fluxbox)
-GITCONFIG_SOURCE=gitconfig
-GITCONFIG_DESTS=(~/.gitconfig)
-NANORC_SOURCE=nanorc
-NANORC_DESTS=(~/.nanorc /etc/nanorc /etc/nano/nanorc)
-VIMRC_SOURCE=vimrc
-VIMRC_DESTS=(~/.vimrc /etc/vimrc /etc/vim/vimrc)
-XINITRC_SOURCE=xinitrc
-XINITRC_DESTS=(~/.xinitrc /etc/X11/xinit/xinitrc)
-XRESOURCES_SOURCE=Xresources
-XRESOURCES_DESTS=(~/.Xresources)
-
 function main {
-  install bashrc      install_file      "$BASHRC_SOURCE"     "${BASHRC_DESTS[@]}"
-  install fluxbox     install_directory "$FLUXBOX_SOURCE"    "${FLUXBOX_DESTS[@]}"
-  install gitconfig   install_file      "$GITCONFIG_SOURCE"  "${GITCONFIG_DESTS[@]}"
-  install nanorc      install_file      "$NANORC_SOURCE"     "${NANORC_DESTS[@]}"
-  install vimrc       install_file      "$VIMRC_SOURCE"      "${VIMRC_DESTS[@]}"
-  install xinitrc     install_file      "$XINITRC_SOURCE"    "${XINITRC_DESTS[@]}"
-  install Xresources  install_file      "$XRESOURCES_SOURCE" "${XRESOURCES_DESTS[@]}"
+  local install_functions name
+  mapfile -t install_functions < <(get_install_functions)
+  for install_function in "${install_functions[@]}"; do
+    name="$(get_install_function_basename "$install_function")"
+    if confirm_install "$name"; then
+      "$install_function"
+    fi
+  done
 }
 
-function install {
-  local name command args
-  name="$1"
-  command="$2"
-  args=("${@:3}")
-  if confirm "Install $name"; then
-    "$command" "${args[@]}"
-  fi
+function install_bashrc {
+  copy_file bashrc ~/.bashrc
 }
 
-function install_file {
+function install_fluxbox {
+  copy_directory fluxbox ~/.fluxbox
+  copy_file fluxbox_xinitrc ~/.xinitrc
+  copy_file fluxbox_Xresources ~/.Xresources
+}
+
+function install_gitconfig {
+  copy_file gitconfig ~/.gitconfig
+}
+
+function install_nanorc {
+  copy_file nanorc ~/.nanorc /etc/nanorc /etc/nano/nanorc
+}
+
+function install_vimrc {
+  copy_file vimrc ~/.vimrc /etc/vimrc /etc/vim/vimrc
+}
+
+function get_install_functions {
+  declare -F | grep --only-matching --perl-regexp '(?<=\s)install_\w*$' | sort --ignore-case
+}
+
+function get_install_function_basename {
+  echo "$1" | grep --only-matching --perl-regexp '(?<=install_).*'
+}
+
+function copy_file {
   local source targets target
   source="$1"
   targets=("${@:2}")
@@ -46,7 +51,7 @@ function install_file {
   cp_sudo_on_fail "$source" "$target"
 }
 
-function install_directory {
+function copy_directory {
   local source targets target
   source="$1"
   targets=("${@:2}")
@@ -82,6 +87,12 @@ function select_option {
 function cp_sudo_on_fail {
   if ! cp "$@" && confirm 'Copy failed, elevate to sudo?'; then
     sudo cp "$@"
+  fi
+}
+
+function confirm_install {
+  if ! confirm "Install $1"; then
+    return 1
   fi
 }
 
