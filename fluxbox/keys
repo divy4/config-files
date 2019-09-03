@@ -1,9 +1,42 @@
 # Find key mods:
 # xmodmap -pm
+#
 # Find key codes (if the name doesn't work):
 # xev
 # or (for just the code)
 # xev | grep --only-matching --perl-regexp '(?<=keycode\s)\w*'
+#
+# Numpad codes:
+# 0 = 90
+# 1 = 87
+# 2 = 88
+# 3 = 89
+# 4 = 83
+# 5 = 84
+# 6 = 85
+# 7 = 79
+# 8 = 80
+# 9 = 81
+
+
+# window snapping
+
+
+## Windows + numpad
+
+Mod4 90 :Maximize
+
+Mod4 87 :MacroCmd {ResizeTo 60%   40%}  {MoveTo 0%  60%}
+Mod4 88 :MacroCmd {ResizeTo 100%  40%}  {MoveTo 0%  60%}
+Mod4 89 :MacroCmd {ResizeTo 40%   40%}  {MoveTo 60% 60%}
+
+Mod4 83 :MacroCmd {ResizeTo 60%   100%} {MoveTo 0%  0%}
+Mod4 84 :Maximize
+Mod4 85 :MacroCmd {ResizeTo 40%   100%} {MoveTo 60% 0%}
+
+Mod4 79 :MacroCmd {ResizeTo 60%   60%}  {MoveTo 0%  0%}
+Mod4 80 :MacroCmd {ResizeTo 100%  60%}  {MoveTo 0%  0%}
+Mod4 81 :MacroCmd {ResizeTo 40%   60%}  {MoveTo 60% 0%}
 
 
 # key commands
@@ -19,7 +52,7 @@ Mod1 F11 :Fullscreen
 
 ## tabs
 
-# switch active tab
+### switch active tab
 Control Tab :NextTab
 Control Shift Tab :PrevTab
 
@@ -82,7 +115,7 @@ OnTitlebar Mouse3 :WindowMenu
 
 ## desktop
 
-## desktop menus
+### desktop menus
 OnDesktop Mouse1 :HideMenus
 OnDesktop Mouse2 :WorkspaceMenu
 OnDesktop Mouse3 :RootMenu
