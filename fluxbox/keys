@@ -1,0 +1,137 @@
+# Find key mods:
+# xmodmap -pm
+#
+# Find key codes (if the name doesn't work):
+# xev
+# or (for just the code)
+# xev | grep --only-matching --perl-regexp '(?<=keycode\s)\w*'
+#
+# Numpad codes:
+# 0 = 90
+# 1 = 87
+# 2 = 88
+# 3 = 89
+# 4 = 83
+# 5 = 84
+# 6 = 85
+# 7 = 79
+# 8 = 80
+# 9 = 81
+
+
+# window snapping
+
+
+## windows + numpad
+
+Mod4 90 :Maximize
+
+Mod4 87 :MacroCmd {ResizeTo 60%   40%}  {MoveTo 0%  60%}
+Mod4 88 :MacroCmd {ResizeTo 100%  40%}  {MoveTo 0%  60%}
+Mod4 89 :MacroCmd {ResizeTo 40%   40%}  {MoveTo 60% 60%}
+
+Mod4 83 :MacroCmd {ResizeTo 60%   100%} {MoveTo 0%  0%}
+Mod4 84 :Maximize
+Mod4 85 :MacroCmd {ResizeTo 40%   100%} {MoveTo 60% 0%}
+
+Mod4 79 :MacroCmd {ResizeTo 60%   60%}  {MoveTo 0%  0%}
+Mod4 80 :MacroCmd {ResizeTo 100%  60%}  {MoveTo 0%  0%}
+Mod4 81 :MacroCmd {ResizeTo 40%   60%}  {MoveTo 60% 0%}
+
+## control + windows + numpad
+
+Control Mod4 90 :Maximize
+
+Control Mod4 87 :MacroCmd {ResizeTo 30% 40%}  {MoveTo 0%  60%}
+Control Mod4 88 :MacroCmd {ResizeTo 30% 40%}  {MoveTo 30% 60%}
+Control Mod4 89 :MacroCmd {ResizeTo 40% 40%}  {MoveTo 60% 60%}
+
+Control Mod4 83 :MacroCmd {ResizeTo 30% 30%}  {MoveTo 0%  30%}
+Control Mod4 84 :MacroCmd {ResizeTo 30% 30%}  {MoveTo 30% 30%}
+Control Mod4 85 :MacroCmd {ResizeTo 40% 30%}  {MoveTo 60% 30%}
+
+Control Mod4 79 :MacroCmd {ResizeTo 30% 30%}  {MoveTo 0%  0%}
+Control Mod4 80 :MacroCmd {ResizeTo 30% 30%}  {MoveTo 30% 0%}
+Control Mod4 81 :MacroCmd {ResizeTo 40% 30%}  {MoveTo 60% 0%}
+
+
+# key commands
+
+
+## current window/tab
+
+Mod1 F4 :Close
+Mod1 F5 :Kill
+Mod1 F9 :Minimize
+Mod1 F10 :Maximize
+Mod1 F11 :Fullscreen
+
+## tabs
+
+### switch active tab
+Control Tab :NextTab
+Control Shift Tab :PrevTab
+
+## windows
+
+### switch active window
+Control Mod4 Tab :NextWindow {groups} (workspace=[current])
+Control Mod4 Shift Tab :PrevWindow {groups} (workspace=[current])
+
+## workspace
+
+### switch workspace
+Mod4 Left :PrevWorkspace
+Mod4 Right :NextWorkspace
+
+### switch workspace and bring current window along
+Control Mod4 Left :TakeToPrevWorkspace
+Control Mod4 Right :TakeToNextWorkspace
+
+## other
+
+### volume settings
+### if these don't work, use xev to find out real keycodes
+176 :Exec amixer sset Master,0 1+
+174 :Exec amixer sset Master,0 1-
+160 :Exec amixer sset Master,0 toggle
+
+### exit fluxbox
+Control Mod1 Delete :Exit
+
+
+# mouse commands
+
+
+## tabs
+
+### attach windows (i.e. tabs)
+OnTitlebar Control Mouse1 :StartTabbing
+
+## windows
+
+### move/resize window
+OnWindow Mod4 Mouse1 :MacroCmd {Raise} {Focus} {StartMoving}
+OnWindowBorder Move1 :StartMoving
+
+OnWindow Mod4 Mouse3 :MacroCmd {Raise} {Focus} {StartResizing NearestCorner}
+OnLeftGrip Move1 :StartResizing bottomleft
+OnRightGrip Move1 :StartResizing bottomright
+
+### move window
+OnTitlebar Mouse1 :MacroCmd {Raise} {Focus} {ActivateTab}
+OnTitlebar Move1  :StartMoving
+
+### lower window
+OnTitlebar Mouse2 :Lower
+
+### window menu
+OnTitlebar Mouse3 :WindowMenu
+
+
+## desktop
+
+### desktop menus
+OnDesktop Mouse1 :HideMenus
+OnDesktop Mouse2 :WorkspaceMenu
+OnDesktop Mouse3 :RootMenu
