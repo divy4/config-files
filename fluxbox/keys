@@ -22,7 +22,7 @@
 # window snapping
 
 
-## Windows + numpad
+## windows + numpad
 
 Mod4 90 :Maximize
 
@@ -37,6 +37,22 @@ Mod4 85 :MacroCmd {ResizeTo 40%   100%} {MoveTo 60% 0%}
 Mod4 79 :MacroCmd {ResizeTo 60%   60%}  {MoveTo 0%  0%}
 Mod4 80 :MacroCmd {ResizeTo 100%  60%}  {MoveTo 0%  0%}
 Mod4 81 :MacroCmd {ResizeTo 40%   60%}  {MoveTo 60% 0%}
+
+## control + windows + numpad
+
+Control Mod4 90 :Maximize
+
+Control Mod4 87 :MacroCmd {ResizeTo 30% 40%}  {MoveTo 0%  60%}
+Control Mod4 88 :MacroCmd {ResizeTo 30% 40%}  {MoveTo 30% 60%}
+Control Mod4 89 :MacroCmd {ResizeTo 40% 40%}  {MoveTo 60% 60%}
+
+Control Mod4 83 :MacroCmd {ResizeTo 30% 30%}  {MoveTo 0%  30%}
+Control Mod4 84 :MacroCmd {ResizeTo 30% 30%}  {MoveTo 30% 30%}
+Control Mod4 85 :MacroCmd {ResizeTo 40% 30%}  {MoveTo 60% 30%}
+
+Control Mod4 79 :MacroCmd {ResizeTo 30% 30%}  {MoveTo 0%  0%}
+Control Mod4 80 :MacroCmd {ResizeTo 30% 30%}  {MoveTo 30% 0%}
+Control Mod4 81 :MacroCmd {ResizeTo 40% 30%}  {MoveTo 60% 0%}
 
 
 # key commands
