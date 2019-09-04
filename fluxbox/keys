@@ -19,11 +19,19 @@
 # 9 = 81
 
 
-# window snapping
+# key commands
 
 
-## windows + numpad
+## App shortcuts
+Control 49 :Exec xterm
+Mod4 c :Exec code
+Mod4 d :Exec deluge
+Mod4 t :Exec xterm
+Mod4 x :Exec xterm
 
+## window snapping
+
+### windows + numpad
 Mod4 90 :Maximize
 
 Mod4 87 :MacroCmd {ResizeTo 60%   40%}  {MoveTo 0%  60%}
@@ -38,8 +46,7 @@ Mod4 79 :MacroCmd {ResizeTo 60%   60%}  {MoveTo 0%  0%}
 Mod4 80 :MacroCmd {ResizeTo 100%  60%}  {MoveTo 0%  0%}
 Mod4 81 :MacroCmd {ResizeTo 40%   60%}  {MoveTo 60% 0%}
 
-## control + windows + numpad
-
+### control + windows + numpad
 Control Mod4 90 :Maximize
 
 Control Mod4 87 :MacroCmd {ResizeTo 30% 40%}  {MoveTo 0%  60%}
@@ -53,9 +60,6 @@ Control Mod4 85 :MacroCmd {ResizeTo 40% 30%}  {MoveTo 60% 30%}
 Control Mod4 79 :MacroCmd {ResizeTo 30% 30%}  {MoveTo 0%  0%}
 Control Mod4 80 :MacroCmd {ResizeTo 30% 30%}  {MoveTo 30% 0%}
 Control Mod4 81 :MacroCmd {ResizeTo 40% 30%}  {MoveTo 60% 0%}
-
-
-# key commands
 
 
 ## current window/tab
@@ -75,8 +79,8 @@ Control Shift Tab :PrevTab
 ## windows
 
 ### switch active window
-Control Mod4 Tab :NextWindow {groups} (workspace=[current])
-Control Mod4 Shift Tab :PrevWindow {groups} (workspace=[current])
+Shift Mod4 Tab :NextWindow {groups} (workspace=[current])
+Shift Mod4 Shift Tab :PrevWindow {groups} (workspace=[current])
 
 ## workspace
 
