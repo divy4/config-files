@@ -1,0 +1,10 @@
+
+*.color:        #000000
+*.focusColor:   #202020
+*.textColor:    #808080
+*.font:         UbuntuMono-12
+
+*.bevelWidth:   0
+*.borderWidth:  0
+*.handleWidth:  0
+
