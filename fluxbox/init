@@ -4,11 +4,11 @@
 # alpha settings #
 ##################
 
-#session.screen0.menu.alpha:            100
-#session.screen0.slit.alpha:            100
-#session.screen0.toolbar.alpha:         100
-#session.screen0.window.focus.alpha:    100
-#session.screen0.window.unfocus.alpha:  100
+session.screen0.menu.alpha:           200
+session.screen0.slit.alpha:           200
+session.screen0.toolbar.alpha:        150
+session.screen0.window.focus.alpha:   170
+session.screen0.window.unfocus.alpha: 150
 #     These resources are available to the user to set different lev-
 #     els of transparency for different components of Fluxbox.  Each
 #     one accepts a value between 0-255, 255 being opaque and 0 being
@@ -19,8 +19,8 @@
 # autohide settings #
 #####################
 
-#session.screen0.slit.autoHide:
-#session.screen0.toolbar.autoHide:
+session.screen0.slit.autoHide:    false
+session.screen0.toolbar.autoHide: false
 #     The autoHide resources allow the user to set the behaviour of
 #     the toolbar and slit. This behaviour can be that they disappear
 #     when they are not being used actively by the user, or they
@@ -31,10 +31,8 @@
 # layer settings #
 ##################
 
-#session.screen0.slit.layer:
-
-#session.screen0.toolbar.layer:
-
+session.screen0.slit.layer: Dock
+session.screen0.toolbar.layer: Dock
 #     With these two resources, you can set the layer you want the
 #     toolbar and the slit to appear on.  Please read the LAYER sec-
 #     tion for more information.
@@ -44,8 +42,8 @@
 # onTop settings #
 ##################
 
-#session.screen0.slit.onTop:
-#session.screen0.toolbar.onTop:
+session.screen0.slit.onTop:     false
+session.screen0.toolbar.onTop:  true
 #     A user can set whether or not the toolbar or slit are always on
 #     top of the screen.  Setting these resources will put the slit
 #     and toolbar above everything visible in the window.
@@ -55,8 +53,8 @@
 # placement settings #
 ######################
 
-#session.screen0.slit.placement:
-#session.screen0.toolbar.placement:
+session.screen0.slit.placement:     RightBottom
+session.screen0.toolbar.placement:	BottomCenter
 #     These allow a user to place the slit and toolbar where ever they
 #     like.  Possible options are:
 #     -   BottomCenter
@@ -72,8 +70,8 @@
 # maxOver settings #
 ####################
 
-#session.screen0.slit.maxOver:
-#session.screen0.toolbar.maxOver:
+session.screen0.slit.maxOver:     true
+session.screen0.toolbar.maxOver:  false
 #     Setting these to 'true' will allow application windows to maximize
 #     over the complete screen.  Setting to 'false' allows the slit and
 #     toolbar to hold their territory and will always be visible when an
@@ -84,25 +82,25 @@
 # toolbar settings #
 ####################
 
-#session.screen0.toolbar.height:
+session.screen0.toolbar.height: 0
 #     Set the height of the toolbar.
 #     If the value is set to 0, the style file will gain control over the
 #     toolbar height. It is possible to set a fixed height by changing it in
 #     init to something >0.
 #     Default: 0
 
-#session.screen0.toolbar.visible:
+session.screen0.toolbar.visible: true
 #     The user can set whether they want to have a toolbar on screen at
 #     all.  Setting to 'false' removes the toolbar from the screen. This
 #     ultimately depends on whether or not the toolbar was compiled into
 #     the Fluxbox build. The default is that the toolbar will be visible.
 #     Default: true
 
-#session.screen0.toolbar.widthPercent:
+session.screen0.toolbar.widthPercent: 100
 #     This resource sets the width of the toolbar on the screen to integer.
 #     Default: 100
 
-#session.screen0.toolbar.tools:
+session.screen0.toolbar.tools:  prevworkspace, workspacename, nextworkspace, iconbar, systemtray, clock
 #     This resource specifies the tools plugged into the toolbar. Read
 #     the TOOLBAR section in this manual for a description of each of
 #     these. Possible tools:
@@ -323,21 +321,9 @@ session.screen0.iconbar.iconTextPadding:	10
 session.screen0.iconbar.iconWidth:	128
 session.screen0.iconbar.alignment:	Relative
 session.screen0.iconbar.mode:	{static groups} (workspace)
-session.screen0.slit.placement:	RightBottom
-session.screen0.slit.autoHide:	false
 session.screen0.slit.acceptKdeDockapps:	true
 session.screen0.slit.onhead:	0
-session.screen0.slit.layer:	Dock
-session.screen0.slit.maxOver:	false
-session.screen0.toolbar.placement:	BottomCenter
-session.screen0.toolbar.layer:	Dock
-session.screen0.toolbar.autoHide:	false
-session.screen0.toolbar.visible:	true
-session.screen0.toolbar.tools:	prevworkspace, workspacename, nextworkspace, iconbar, systemtray, clock
-session.screen0.toolbar.height:	0
 session.screen0.toolbar.onhead:	1
-session.screen0.toolbar.maxOver:	false
-session.screen0.toolbar.widthPercent:	100
 session.screen0.tabs.usePixmap:	true
 session.screen0.tabs.maxOver:	false
 session.screen0.tabs.intitlebar:	true
