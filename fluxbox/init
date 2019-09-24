@@ -1,6 +1,6 @@
 # Created from http://fluxbox-wiki.org/Editing_the_init_file.html
 session.appsFile:                                   ~/.fluxbox/apps
-session.autoRaiseDelay:                             0
+session.autoRaiseDelay:                             500
 session.cacheLife:                                  5
 session.cacheMax:                                   200
 session.colorsPerChannel:                           4
@@ -48,7 +48,7 @@ session.screen0.menuDelay:                          0
 session.screen0.menuDelayClose:                     0
 session.screen0.menuMode:                           Delay
 session.screen0.noFocusWhileTypingDelay:            0
-session.screen0.opaqueMove:                         false
+session.screen0.opaqueMove:                         true
 session.screen0.resizeMode:                         Bottom
 session.screen0.rowPlacementDirection:              LeftToRight
 session.screen0.showposinsidewindow:                false
@@ -67,7 +67,7 @@ session.screen0.strftimeFormat:                     %A %m/%d/%Y %I:%M:%S %p
 session.screen0.tab.alignment:                      Right
 session.screen0.tab.height:                         16
 session.screen0.tab.placement:                      TopLeft
-session.screen0.tab.rotatevertical:                 True
+session.screen0.tab.rotatevertical:                 true
 session.screen0.tab.width:                          64
 session.screen0.tabFocusModel:                      ClickToTabFocus
 session.screen0.tabs.intitlebar:                    true
@@ -91,7 +91,7 @@ session.screen0.window.focus.alpha:                 170
 session.screen0.window.unfocus.alpha:               150
 session.screen0.windowMenu:                         ~/.fluxbox/windowmenu
 session.screen0.windowPlacement:                    RowMinOverlapPlacement
-session.screen0.workspaceNames:                     0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+session.screen0.workspaceNames:                     0,1,2,3,4,5,6,7,8,9
 session.screen0.workspaces:                         10
 session.screen0.workspacewarping:                   false
 session.slitlistFile:                               ~/.fluxbox/slitlist
