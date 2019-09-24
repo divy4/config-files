@@ -26,6 +26,8 @@
 Control 49 :Exec xterm
 Mod4 c :Exec code
 Mod4 d :Exec deluge
+Mod4 n :Exec chromium
+Mod4 Shift n :Exec chromium --incognito
 Mod4 t :Exec xterm
 Mod4 x :Exec xterm
 
@@ -65,6 +67,7 @@ Control Mod4 81 :MacroCmd {ResizeTo 40% 30%}  {MoveTo 60% 0%}
 ## current window/tab
 
 Mod1 F4 :Close
+Mod4 q :Close
 Mod1 F5 :Kill
 Mod1 F9 :Minimize
 Mod1 F10 :Maximize
@@ -78,9 +81,9 @@ Control Shift Tab :PrevTab
 
 ## windows
 
-### switch active window
-Shift Mod4 Tab :NextWindow {groups} (workspace=[current])
-Shift Mod4 Shift Tab :PrevWindow {groups} (workspace=[current])
+### switch active window (win + up or down)
+Mod4 111 :NextWindow {groups} (workspace=[current])
+Mod4 116 :PrevWindow {groups} (workspace=[current])
 
 ## workspace
 
