@@ -9,7 +9,8 @@ if [[ -n "$SSH_CONNECTION" ]]; then
 fi
 
 # set vim as editor
-export VISUAL=vim
+export VISUAL='vim'
+export EDITOR='code --wait'
 
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
