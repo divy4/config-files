@@ -8,9 +8,9 @@ if [[ -n "$SSH_CONNECTION" ]]; then
   export PINENTRY_USER_DATA="USE_CURSES=1"
 fi
 
-# set vim as editor
-export VISUAL='vim'
-export EDITOR='code --wait'
+# set VS Code as default editor, vim as secondary
+export VISUAL='code --wait'
+export EDITOR='vim'
 
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
@@ -66,3 +66,17 @@ alias lla='ls -la'
 alias l1='ls -1'
 alias vim='vim -o' #always open multiple files in split mode
 
+# os-specific settings
+case "$(uname -s)" in
+    Linux*)
+      export PACKER_CACHE_DIR='/tmp/packer'
+      export PACKER_VM_DIR='/var/vms'
+      ;;
+    CYGWIN*|MINGW*)
+      export PACKER_CACHE_DIR='/t/packer'
+      export PACKER_VM_DIR='/t/vms'
+      ;;
+    *)
+      echo "Unrecognized OS: $(uname -s)"
+      ;;
+esac
