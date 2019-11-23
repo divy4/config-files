@@ -8,9 +8,9 @@ if [[ -n "$SSH_CONNECTION" ]]; then
   export PINENTRY_USER_DATA="USE_CURSES=1"
 fi
 
-# set vim as editor
-export VISUAL='vim'
-export EDITOR='code --wait'
+# set VS Code as default editor, vim as secondary
+export VISUAL='code --wait'
+export EDITOR='vim'
 
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
