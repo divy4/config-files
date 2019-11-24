@@ -17,6 +17,10 @@ function install_bashrc {
   copy_file bashrc ~/.bashrc
 }
 
+function install_conemu {
+  copy_file ConEmu.xml "$APPDATA/ConEmu.xml"
+}
+
 function install_fluxbox {
   copy_directory fluxbox ~/.fluxbox
   copy_file fluxbox_xinitrc ~/.xinitrc
