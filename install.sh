@@ -80,8 +80,8 @@ function select_option {
   message="$1"
   options=("${@:2}")
   if [ "${#options[@]}" -eq 0 ]; then
-    (>&2 echo 'select_option requires at least 1 argument')
-    exit 1
+    echo_err 'select_option requires at least 1 argument'
+    return 1
   elif [ "${#options[@]}" -eq 1 ]; then
     selection="${options[0]}"
   else
