@@ -3,10 +3,10 @@
 set -e
 
 function main {
-  local config_functions interactive config_function name
+  local config_functions interactive config_function
   config_functions=("$@")
   interactive=false
-  if [[ -z "$config_functions" ]]; then
+  if [[ -z "${config_functions[*]}" ]]; then
     mapfile -t config_functions < <(get_config_functions)
     interactive=true
   fi
@@ -103,8 +103,8 @@ function choose_target {
   shift
   targets=("$@")
   for target in "${targets[@]}"; do
-    if ([[ "$type" == 'file' ]] && [[ -f "$target" ]]) || \
-        ([[ "$type" == 'directory' ]] && [[ -d "$target" ]]); then
+    if [[ "$type" == 'file' ]] && [[ -f "$target" ]] || \
+        [[ "$type" == 'directory' ]] && [[ -d "$target" ]]; then
       echo "$target"
       return 0
     fi
