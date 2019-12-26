@@ -3,51 +3,51 @@
 set -e
 
 function main {
-  local install_functions interactive install_function name
-  install_functions=("$@")
+  local config_functions interactive config_function name
+  config_functions=("$@")
   interactive=false
-  if [[ -z "$install_functions" ]]; then
-    mapfile -t install_functions < <(get_install_functions)
+  if [[ -z "$config_functions" ]]; then
+    mapfile -t config_functions < <(get_config_functions)
     interactive=true
   fi
-  for install_function in "${install_functions[@]}"; do
+  for config_function in "${config_functions[@]}"; do
     if [[ "$interactive" == 'false' ]] \
-        || confirm_install "$install_function"; then
-      "install_$install_function"
+        || confirm_config "$config_function"; then
+      "config_$config_function"
     fi
   done
 }
 
-function install_bash {
+function config_bash {
   copy_file bashrc ~/.bashrc
 }
 
-function install_conemu {
+function config_conemu {
   copy_file ConEmu.xml "$APPDATA/ConEmu.xml"
 }
 
-function install_fluxbox {
+function config_fluxbox {
   copy_directory fluxbox ~/.fluxbox
   copy_file fluxbox_xinitrc ~/.xinitrc
   copy_file fluxbox_Xresources ~/.Xresources
 }
 
-function install_git {
+function config_git {
   copy_file gitconfig ~/.gitconfig
 }
 
-function install_nano {
+function config_nano {
   copy_file nanorc ~/.nanorc /etc/nanorc /etc/nano/nanorc
 }
 
-function install_vim {
+function config_vim {
   copy_file vimrc ~/.vimrc /etc/vimrc /etc/vim/vimrc
 }
 
-function get_install_functions {
+function get_config_functions {
   declare -F \
-    | grep --only-matching --perl-regexp '(?<=\s)install_\w*$' \
-    | sed 's/install_//g' \
+    | grep --only-matching --perl-regexp '(?<=\s)config_\w*$' \
+    | sed 's/config_//g' \
     | sort --ignore-case
 }
 
@@ -55,7 +55,7 @@ function copy_file {
   local source targets target
   source="$1"
   targets=("${@:2}")
-  target="$(select_option "Select where to install:" "${targets[@]}")"
+  target="$(select_option "Select where to install config:" "${targets[@]}")"
   cp_sudo_on_fail "$source" "$target"
 }
 
@@ -63,7 +63,7 @@ function copy_directory {
   local source targets target
   source="$1"
   targets=("${@:2}")
-  target="$(select_option "Select where to install:" "${targets[@]}")"
+  target="$(select_option "Select where to install config:" "${targets[@]}")"
   cp_sudo_on_fail -r "$source/"* "$target"
 }
 
@@ -98,8 +98,8 @@ function cp_sudo_on_fail {
   fi
 }
 
-function confirm_install {
-  confirm "Install $1"
+function confirm_config {
+  confirm "Configure $1"
 }
 
 function confirm {
