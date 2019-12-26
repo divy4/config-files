@@ -3,101 +3,117 @@
 set -e
 
 function main {
-  local install_functions name
-  mapfile -t install_functions < <(get_install_functions)
-  for install_function in "${install_functions[@]}"; do
-    name="$(get_install_function_basename "$install_function")"
-    if confirm_install "$name"; then
-      "$install_function"
+  local config_functions interactive config_function
+  config_functions=("$@")
+  interactive=false
+  if [[ -z "${config_functions[*]}" ]]; then
+    mapfile -t config_functions < <(get_config_functions)
+    interactive=true
+  fi
+  for config_function in "${config_functions[@]}"; do
+    if [[ "$interactive" == 'false' ]] \
+        || confirm_config "$config_function"; then
+      "config_$config_function"
     fi
   done
 }
 
-function install_bashrc {
-  copy_file bashrc ~/.bashrc
-}
-
-function install_conemu {
-  copy_file ConEmu.xml "$APPDATA/ConEmu.xml"
-}
-
-function install_fluxbox {
-  copy_directory fluxbox ~/.fluxbox
-  copy_file fluxbox_xinitrc ~/.xinitrc
-  copy_file fluxbox_Xresources ~/.Xresources
-}
-
-function install_gitconfig {
-  copy_file gitconfig ~/.gitconfig
-}
-
-function install_nanorc {
-  copy_file nanorc ~/.nanorc /etc/nanorc /etc/nano/nanorc
-}
-
-function install_vimrc {
-  copy_file vimrc ~/.vimrc /etc/vimrc /etc/vim/vimrc
-}
-
-function get_install_functions {
-  declare -F | grep --only-matching --perl-regexp '(?<=\s)install_\w*$' | sort --ignore-case
-}
-
-function get_install_function_basename {
-  echo "$1" | grep --only-matching --perl-regexp '(?<=install_).*'
-}
-
-function copy_file {
-  local source targets target
-  source="$1"
-  targets=("${@:2}")
-  target="$(select_option "Select where to install:" "${targets[@]}")"
-  cp_sudo_on_fail "$source" "$target"
-}
-
-function copy_directory {
-  local source targets target
-  source="$1"
-  targets=("${@:2}")
-  target="$(select_option "Select where to install:" "${targets[@]}")"
-  cp_sudo_on_fail -r "$source/"* "$target"
-}
-
-function select_option {
-  local message options selection
-  message="$1"
-  options=("${@:2}")
-  if [ "${#options[@]}" -eq 0 ]; then
-    (>&2 echo 'select_option requires at least 1 argument')
-    exit 1
-  elif [ "${#options[@]}" -eq 1 ]; then
-    selection="${options[0]}"
-  else
-    echo_tty "$message"
-    select selection in "${options[@]}"; do
-      case "$selection" in
-        "")
-          echo_tty "Invalid option"
-          ;;
-        *)
-          break
-          ;;
-      esac
-    done
-  fi
-  echo "$selection"
-}
-
-function cp_sudo_on_fail {
-  if ! cp "$@" && confirm 'Copy failed, elevate to sudo?'; then
-    sudo cp "$@"
-  fi
-}
-
-function confirm_install {
-  if ! confirm "Install $1"; then
+function config_bash {
+  if is_root; then
+    echo_err 'Root bash config not supported!'
     return 1
+  else
+    copy file bashrc ~/.bashrc
   fi
+}
+
+function config_conemu {
+  if is_root; then
+    echo_err 'Root conemu config not supported!'
+    return 1
+  else
+    copy file ConEmu.xml "$APPDATA/ConEmu.xml"
+  fi
+}
+
+function config_fluxbox {
+  if is_root; then
+    echo_err 'Root fluxbox config not supported!'
+    return 1
+  else
+    copy directory fluxbox ~/.fluxbox
+    copy file fluxbox_xinitrc ~/.xinitrc
+    copy file fluxbox_Xresources ~/.Xresources
+  fi
+}
+
+function config_git {
+  if is_root; then
+    echo_err 'Root git config not supported!'
+    return 1
+  else
+    copy file gitconfig ~/.gitconfig
+  fi
+}
+
+function config_nano {
+  if is_root; then
+    copy file nanorc /etc/nanorc /etc/nano/nanorc
+  else
+    copy file nanorc ~/.nanorc
+  fi
+}
+
+function config_vim {
+  if is_root; then
+    copy file vimrc /etc/vimrc /etc/vim/vimrc
+  else
+    copy file vimrc ~/.vimrc
+  fi
+}
+
+function get_config_functions {
+  declare -F \
+    | grep --only-matching --perl-regexp '(?<=\s)config_\w*$' \
+    | sed 's/config_//g' \
+    | sort --ignore-case
+}
+
+function copy {
+  local type source targets target
+  type="$1"
+  source="$2"
+  shift 2
+  targets=("$@")
+  target="$(choose_target file "${targets[@]}")"
+  case "$type" in
+  file)
+    cp "$source" "$target";;
+  directory)
+    cp -r "$source" "$target";;
+  *)
+    echo_err "Invalid type: $type"
+    return 1;;
+  esac
+}
+
+function choose_target {
+  local type targets target
+  type="$1"
+  shift
+  targets=("$@")
+  for target in "${targets[@]}"; do
+    if [[ "$type" == 'file' ]] && [[ -f "$target" ]] || \
+        [[ "$type" == 'directory' ]] && [[ -d "$target" ]]; then
+      echo "$target"
+      return 0
+    fi
+  done
+  echo "${targets[0]}"
+}
+
+function confirm_config {
+  confirm "Configure $1"
 }
 
 function confirm {
@@ -120,15 +136,15 @@ function confirm {
 }
 
 function is_yes {
-  if [[ ! "${1,,}" =~ ^y(es)?$ ]]; then
-    return 1
-  fi
+  [[ "${1,,}" =~ ^y(es)?$ ]]
 }
 
 function is_no {
-  if [[ ! "${1,,}" =~ ^no?$ ]]; then
-    return 1
-  fi
+  [[ "${1,,}" =~ ^no?$ ]]
+}
+
+function is_root {
+  [[ "$UID" -eq 0 ]]
 }
 
 function echo_tty {
