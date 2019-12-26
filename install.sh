@@ -19,36 +19,36 @@ function main {
 }
 
 function config_bash {
-  copy_file bashrc ~/.bashrc
+  copy file bashrc ~/.bashrc
 }
 
 function config_conemu {
-  copy_file ConEmu.xml "$APPDATA/ConEmu.xml"
+  copy file ConEmu.xml "$APPDATA/ConEmu.xml"
 }
 
 function config_fluxbox {
-  copy_directory fluxbox ~/.fluxbox
-  copy_file fluxbox_xinitrc ~/.xinitrc
-  copy_file fluxbox_Xresources ~/.Xresources
+  copy directory fluxbox ~/.fluxbox
+  copy file fluxbox_xinitrc ~/.xinitrc
+  copy file fluxbox_Xresources ~/.Xresources
 }
 
 function config_git {
-  copy_file gitconfig ~/.gitconfig
+  copy file gitconfig ~/.gitconfig
 }
 
 function config_nano {
   if is_root; then
-    copy_file nanorc /etc/nanorc /etc/nano/nanorc
+    copy file nanorc /etc/nanorc /etc/nano/nanorc
   else
-    copy_file nanorc ~/.nanorc
+    copy file nanorc ~/.nanorc
   fi
 }
 
 function config_vim {
   if is_root; then
-    copy_file vimrc /etc/vimrc /etc/vim/vimrc
+    copy file vimrc /etc/vimrc /etc/vim/vimrc
   else
-    copy_file vimrc ~/.vimrc
+    copy file vimrc ~/.vimrc
   fi
 }
 
@@ -59,45 +59,37 @@ function get_config_functions {
     | sort --ignore-case
 }
 
-function copy_file {
-  local source targets target
-  source="$1"
-  targets=("${@:2}")
-  target="$(select_option "Select where to install config:" "${targets[@]}")"
-  cp "$source" "$target"
+function copy {
+  local type source targets target
+  type="$1"
+  source="$2"
+  shift 2
+  targets=("$@")
+  target="$(choose_target file "${targets[@]}")"
+  case "$type" in
+  file)
+    cp "$source" "$target";;
+  directory)
+    cp -r "$source" "$target";;
+  *)
+    echo_err "Invalid type: $type"
+    return 1;;
+  esac
 }
 
-function copy_directory {
-  local source targets target
-  source="$1"
-  targets=("${@:2}")
-  target="$(select_option "Select where to install config:" "${targets[@]}")"
-  cp -r "$source/"* "$target"
-}
-
-function select_option {
-  local message options selection
-  message="$1"
-  options=("${@:2}")
-  if [ "${#options[@]}" -eq 0 ]; then
-    echo_err 'select_option requires at least 1 argument'
-    return 1
-  elif [ "${#options[@]}" -eq 1 ]; then
-    selection="${options[0]}"
-  else
-    echo_tty "$message"
-    select selection in "${options[@]}"; do
-      case "$selection" in
-        "")
-          echo_tty "Invalid option"
-          ;;
-        *)
-          break
-          ;;
-      esac
-    done
-  fi
-  echo "$selection"
+function choose_target {
+  local type targets target
+  type="$1"
+  shift
+  targets=("$@")
+  for target in "${targets[@]}"; do
+    if ([[ "$type" == 'file' ]] && [[ -f "$target" ]]) || \
+        ([[ "$type" == 'directory' ]] && [[ -d "$target" ]]); then
+      echo "$target"
+      return 0
+    fi
+  done
+  echo "${targets[0]}"
 }
 
 function confirm_config {
