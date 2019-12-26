@@ -19,21 +19,41 @@ function main {
 }
 
 function config_bash {
-  copy file bashrc ~/.bashrc
+  if is_root; then
+    echo_err 'Root bash config not supported!'
+    return 1
+  else
+    copy file bashrc ~/.bashrc
+  fi
 }
 
 function config_conemu {
-  copy file ConEmu.xml "$APPDATA/ConEmu.xml"
+  if is_root; then
+    echo_err 'Root conemu config not supported!'
+    return 1
+  else
+    copy file ConEmu.xml "$APPDATA/ConEmu.xml"
+  fi
 }
 
 function config_fluxbox {
-  copy directory fluxbox ~/.fluxbox
-  copy file fluxbox_xinitrc ~/.xinitrc
-  copy file fluxbox_Xresources ~/.Xresources
+  if is_root; then
+    echo_err 'Root fluxbox config not supported!'
+    return 1
+  else
+    copy directory fluxbox ~/.fluxbox
+    copy file fluxbox_xinitrc ~/.xinitrc
+    copy file fluxbox_Xresources ~/.Xresources
+  fi
 }
 
 function config_git {
-  copy file gitconfig ~/.gitconfig
+  if is_root; then
+    echo_err 'Root git config not supported!'
+    return 1
+  else
+    copy file gitconfig ~/.gitconfig
+  fi
 }
 
 function config_nano {
