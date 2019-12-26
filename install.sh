@@ -3,17 +3,22 @@
 set -e
 
 function main {
-  local install_functions name
-  mapfile -t install_functions < <(get_install_functions)
+  local install_functions interactive install_function name
+  install_functions=("$@")
+  interactive=false
+  if [[ -z "$install_functions" ]]; then
+    mapfile -t install_functions < <(get_install_functions)
+    interactive=true
+  fi
   for install_function in "${install_functions[@]}"; do
-    name="$(get_install_function_basename "$install_function")"
-    if confirm_install "$name"; then
-      "$install_function"
+    if [[ "$interactive" == 'false' ]] \
+        || confirm_install "$install_function"; then
+      "install_$install_function"
     fi
   done
 }
 
-function install_bashrc {
+function install_bash {
   copy_file bashrc ~/.bashrc
 }
 
@@ -27,24 +32,23 @@ function install_fluxbox {
   copy_file fluxbox_Xresources ~/.Xresources
 }
 
-function install_gitconfig {
+function install_git {
   copy_file gitconfig ~/.gitconfig
 }
 
-function install_nanorc {
+function install_nano {
   copy_file nanorc ~/.nanorc /etc/nanorc /etc/nano/nanorc
 }
 
-function install_vimrc {
+function install_vim {
   copy_file vimrc ~/.vimrc /etc/vimrc /etc/vim/vimrc
 }
 
 function get_install_functions {
-  declare -F | grep --only-matching --perl-regexp '(?<=\s)install_\w*$' | sort --ignore-case
-}
-
-function get_install_function_basename {
-  echo "$1" | grep --only-matching --perl-regexp '(?<=install_).*'
+  declare -F \
+    | grep --only-matching --perl-regexp '(?<=\s)install_\w*$' \
+    | sed 's/install_//g' \
+    | sort --ignore-case
 }
 
 function copy_file {
