@@ -99,9 +99,7 @@ function cp_sudo_on_fail {
 }
 
 function confirm_install {
-  if ! confirm "Install $1"; then
-    return 1
-  fi
+  confirm "Install $1"
 }
 
 function confirm {
@@ -124,15 +122,15 @@ function confirm {
 }
 
 function is_yes {
-  if [[ ! "${1,,}" =~ ^y(es)?$ ]]; then
-    return 1
-  fi
+  [[ "${1,,}" =~ ^y(es)?$ ]]
 }
 
 function is_no {
-  if [[ ! "${1,,}" =~ ^no?$ ]]; then
-    return 1
-  fi
+  [[ "${1,,}" =~ ^no?$ ]]
+}
+
+function is_root {
+  [[ "$UID" -eq 0 ]]
 }
 
 function echo_tty {
