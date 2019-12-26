@@ -37,11 +37,19 @@ function config_git {
 }
 
 function config_nano {
-  copy_file nanorc ~/.nanorc /etc/nanorc /etc/nano/nanorc
+  if is_root; then
+    copy_file nanorc /etc/nanorc /etc/nano/nanorc
+  else
+    copy_file nanorc ~/.nanorc
+  fi
 }
 
 function config_vim {
-  copy_file vimrc ~/.vimrc /etc/vimrc /etc/vim/vimrc
+  if is_root; then
+    copy_file vimrc /etc/vimrc /etc/vim/vimrc
+  else
+    copy_file vimrc ~/.vimrc
+  fi
 }
 
 function get_config_functions {
@@ -56,7 +64,7 @@ function copy_file {
   source="$1"
   targets=("${@:2}")
   target="$(select_option "Select where to install config:" "${targets[@]}")"
-  cp_sudo_on_fail "$source" "$target"
+  cp "$source" "$target"
 }
 
 function copy_directory {
@@ -64,7 +72,7 @@ function copy_directory {
   source="$1"
   targets=("${@:2}")
   target="$(select_option "Select where to install config:" "${targets[@]}")"
-  cp_sudo_on_fail -r "$source/"* "$target"
+  cp -r "$source/"* "$target"
 }
 
 function select_option {
@@ -90,12 +98,6 @@ function select_option {
     done
   fi
   echo "$selection"
-}
-
-function cp_sudo_on_fail {
-  if ! cp "$@" && confirm 'Copy failed, elevate to sudo?'; then
-    sudo cp "$@"
-  fi
 }
 
 function confirm_config {
