@@ -45,7 +45,6 @@ function config_fluxbox {
     copy directory fluxbox ~/.fluxbox
     copy file fluxbox_xinitrc ~/.xinitrc
     copy file fluxbox_Xresources ~/.Xresources
-    
     mapfile -t apps < <(\
       grep '# autoexec' ~/.fluxbox/menu \
       | sed --regexp-extended --expression='s/.*\((\w+)\).*/\1/g' \
@@ -73,6 +72,16 @@ function config_nano {
     copy file nanorc /etc/nanorc /etc/nano/nanorc
   else
     copy file nanorc ~/.nanorc
+  fi
+}
+
+function config_ssh {
+  local keys key
+  if is_root; then
+    echo_err 'Root ssh config not supported!'
+    return 1
+  else
+    copy file sshconfig ~/.ssh/config
   fi
 }
 
