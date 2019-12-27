@@ -37,6 +37,7 @@ function config_conemu {
 }
 
 function config_fluxbox {
+  local apps app exp
   if is_root; then
     echo_err 'Root fluxbox config not supported!'
     return 1
@@ -44,6 +45,17 @@ function config_fluxbox {
     copy directory fluxbox ~/.fluxbox
     copy file fluxbox_xinitrc ~/.xinitrc
     copy file fluxbox_Xresources ~/.Xresources
+    
+    mapfile -t apps < <(\
+      grep '# autoexec' ~/.fluxbox/menu \
+      | sed --regexp-extended --expression='s/.*\((\w+)\).*/\1/g' \
+    )
+    for app in "${apps[@]}"; do
+      if command -v "$app" > /dev/null; then
+        exp="s/#\sautoexec\s*(.*\{$app\})/\1/g"
+        sed --in-place --regexp-extended --expression="$exp" ~/.fluxbox/menu
+      fi
+    done
   fi
 }
 
