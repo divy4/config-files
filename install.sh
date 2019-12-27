@@ -90,7 +90,7 @@ function copy {
   file)
     cp "$source" "$target";;
   directory)
-    cp -r "$source" "$target";;
+    cp --recursive "$source/." "$target";;
   *)
     echo_err "Invalid type: $type"
     return 1;;
