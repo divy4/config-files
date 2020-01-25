@@ -76,7 +76,6 @@ function config_nano {
 }
 
 function config_ssh {
-  local keys key
   if is_root; then
     echo_err 'Root ssh config not supported!'
     return 1
@@ -101,12 +100,15 @@ function get_config_functions {
 }
 
 function copy {
-  local type source targets target
+  local type source targets target target_parent
   type="$1"
   source="$2"
-  shift 2
-  targets=("$@")
+  targets=("${@:3}")
   target="$(choose_target file "${targets[@]}")"
+  target_parent="$(realpath --canonicalize-missing "$target/..")"
+  if [[ ! -d "$target_parent" ]]; then
+    mkdir --parents "$target_parent"
+  fi
   case "$type" in
   file)
     cp "$source" "$target";;
@@ -121,8 +123,7 @@ function copy {
 function choose_target {
   local type targets target
   type="$1"
-  shift
-  targets=("$@")
+  targets=("${@:2}")
   for target in "${targets[@]}"; do
     if [[ "$type" == 'file' ]] && [[ -f "$target" ]] || \
         [[ "$type" == 'directory' ]] && [[ -d "$target" ]]; then
