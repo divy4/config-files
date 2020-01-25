@@ -76,7 +76,6 @@ function config_nano {
 }
 
 function config_ssh {
-  local keys key
   if is_root; then
     echo_err 'Root ssh config not supported!'
     return 1
