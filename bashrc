@@ -21,6 +21,11 @@ export DOCKER_BUILDKIT=1
 # prompt
 PS1='\[\033[32m\]\u@\h \[\033[33m\]\W\[\033[0m\] \$ '
 
+# clipboard
+alias clipboard='xclip -selection clipboard'
+alias primary='xclip -selection primary'
+alias secondary='xclip -selection secondary'
+
 # compressing/decompressing
 alias   compresstar='tar -cf'
 alias decompresstar='tar -xf'
