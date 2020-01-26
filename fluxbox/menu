@@ -17,6 +17,7 @@
 [begin] (Fluxbox-1.3.7)
   [encoding] {UTF-8}
   # autoexec [exec] (chromium) {chromium}
+  # autoexec [exec] (code) {code}
   # autoexec [exec] (deluge) {deluge}
   # autoexec [exec] (virtualbox) {virtualbox}
   # autoexec [exec] (xterm) {xterm}
