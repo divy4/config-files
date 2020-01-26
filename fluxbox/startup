@@ -1,20 +1,16 @@
 #!/bin/sh
-#
-# fluxbox startup-script:
-#
-# Lines starting with a '#' are ignored.
 
-# Change your keymap:
+# Keymap
 xmodmap "/home/dan/.Xmodmap"
 
-# Applications you want to run with fluxbox.
-# MAKE SURE THAT APPS THAT KEEP RUNNING HAVE AN ''&'' AT THE END.
-#
+# Set background
 ~/.fluxbox/setbackground.sh
 
-# And last but not least we start fluxbox.
-# Because it is the last app you have to run it with ''exec'' before it.
+# Start VirtualBox guest additions
+if command -v VBoxClient-all; then
+  VBoxClient-all
+fi
 
+# Run fluxbox
 exec fluxbox
-# or if you want to keep a log:
 # exec fluxbox -log "/home/dan/.fluxbox/log"
