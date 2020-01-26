@@ -44,6 +44,7 @@ function config_fluxbox {
   else
     copy directory fluxbox ~/.fluxbox
     copy file fluxbox_xinitrc ~/.xinitrc
+    copy file fluxbox_Xdefaults ~/.Xdefaults
     copy file fluxbox_Xresources ~/.Xresources
     mapfile -t apps < <(\
       grep '# autoexec' ~/.fluxbox/menu \

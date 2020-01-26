@@ -11,6 +11,9 @@ if command -v VBoxClient-all; then
   VBoxClient-all
 fi
 
+# Clock
+lal &
+
 # Run fluxbox
 exec fluxbox
 # exec fluxbox -log "/home/dan/.fluxbox/log"
