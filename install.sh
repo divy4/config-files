@@ -51,7 +51,7 @@ function config_fluxbox {
     )
     for app in "${apps[@]}"; do
       if command -v "$app" > /dev/null; then
-        exp="s/#\sautoexec\s*(.*\{$app\})/\1/g"
+        exp="s/#\sautoexec\s*(.*\($app\))/\1/g"
         sed --in-place --regexp-extended --expression="$exp" ~/.fluxbox/menu
       fi
     done
