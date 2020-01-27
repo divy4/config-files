@@ -44,6 +44,7 @@ function config_fluxbox {
   else
     copy directory fluxbox ~/.fluxbox
     copy file fluxbox_xinitrc ~/.xinitrc
+    copy file fluxbox_Xdefaults ~/.Xdefaults
     copy file fluxbox_Xresources ~/.Xresources
     mapfile -t apps < <(\
       grep '# autoexec' ~/.fluxbox/menu \
@@ -51,7 +52,7 @@ function config_fluxbox {
     )
     for app in "${apps[@]}"; do
       if command -v "$app" > /dev/null; then
-        exp="s/#\sautoexec\s*(.*\{$app\})/\1/g"
+        exp="s/#\sautoexec\s*(.*\($app\))/\1/g"
         sed --in-place --regexp-extended --expression="$exp" ~/.fluxbox/menu
       fi
     done
