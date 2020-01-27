@@ -16,6 +16,7 @@
 #     session.menuFile: ~/.fluxbox/my-menu
 [begin] (Fluxbox-1.3.7)
   [encoding] {UTF-8}
+  # autoexec [exec] (alsamixer) {xterm alsamixer}
   # autoexec [exec] (chromium) {chromium}
   # autoexec [exec] (code) {code}
   # autoexec [exec] (deluge) {deluge}
