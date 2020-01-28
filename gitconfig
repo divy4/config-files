@@ -1,7 +1,7 @@
 [user]
   name = Dan Ivy
-  email = danivy4@gmail.com
-  signingkey = fail!
+  email = # populate email
+  signingkey = # populate signingkey
 [core]
   editor = vim
   encoding = utf-8
@@ -38,5 +38,3 @@
   autoStash = true
 [status]
   showUntrackedFiles = all
-
-
