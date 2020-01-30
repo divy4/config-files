@@ -89,6 +89,9 @@ esac
 
 # First time setup
 if [[ -f ~/.bootstrap.sh ]]; then
-  ~/.bootstrap.sh
-  rm ~/.bootstrap.sh
+  if ~/.bootstrap.sh; then
+    rm ~/.bootstrap.sh
+  else
+    echo 'Failed to bootstrap configs'
+  fi
 fi
