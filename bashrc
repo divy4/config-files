@@ -63,6 +63,7 @@ alias cls='clear;ls'
 alias df='df -h'
 alias du='du -cah --apparent-size'
 alias emptytrash='rm -r ~/.local/share/Trash/*/*'
+alias generate_password='cat /dev/urandom | tr --complement --delete 'a-zA-Z0-9' | head --bytes'
 alias l='ls'
 alias ls='ls --color=auto'
 alias la='ls -a'
@@ -73,15 +74,24 @@ alias vim='vim -o' #always open multiple files in split mode
 
 # os-specific settings
 case "$(uname -s)" in
-    Linux*)
-      export PACKER_CACHE_DIR='/tmp/packer'
-      export PACKER_VM_DIR='/var/vms'
-      ;;
-    CYGWIN*|MINGW*)
-      export PACKER_CACHE_DIR='/t/packer'
-      export PACKER_VM_DIR='/t/vms'
-      ;;
-    *)
-      echo "Unrecognized OS: $(uname -s)"
-      ;;
+  Linux*)
+    export PACKER_CACHE_DIR='/tmp/packer'
+    export PACKER_VM_DIR='/var/vms'
+    ;;
+  CYGWIN*|MINGW*)
+    export PACKER_CACHE_DIR='/t/packer'
+    export PACKER_VM_DIR='/t/vms'
+    ;;
+  *)
+    echo "Unrecognized OS: $(uname -s)"
+    ;;
 esac
+
+# First time setup
+if [[ -f ~/.bootstrap.sh ]]; then
+  if ~/.bootstrap.sh; then
+    rm ~/.bootstrap.sh
+  else
+    echo 'Failed to bootstrap configs'
+  fi
+fi

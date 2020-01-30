@@ -24,6 +24,7 @@ function config_bash {
     return 1
   else
     copy file bashrc ~/.bashrc
+    copy file bootstrap.sh ~/.bootstrap.sh
   fi
 }
 
