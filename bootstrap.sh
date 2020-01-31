@@ -22,6 +22,7 @@ function populate_git {
     echo 'Populating git config...'
     email="$(read_with_confirm email)"
     echo 'Please enter a password for your git signing key'
+    sleep 1
     gpg --batch --generate-key \
       <(generate_gpg_script "$NAME" git "$email" 1d)
     fingerprint="$(get_gpg_key_fingerprint "$NAME" git "$email")"
