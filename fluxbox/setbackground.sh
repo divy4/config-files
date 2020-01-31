@@ -3,8 +3,8 @@
 set -e
 
 paths=(\
-  ~/.fluxbox/backgrounds/background.jpg \
-  ~/.fluxbox/backgrounds/background.png \
+  ~/.fluxbox/background.jpg \
+  ~/.fluxbox/background.png \
 )
 
 function main {
