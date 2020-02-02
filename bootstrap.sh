@@ -33,23 +33,14 @@ function populate_git {
   fi
 }
 
-function get_gpg_key_public_block {
-  local name email comment expire
-  name="${1?Please specify a name}"
-  comment="${2?Please specify a comment}"
-  email="${3?Please specify an email}"
-  gpg --armor --export "$name ($comment) <$email>"
-}
-
-function get_gpg_key_fingerprint {
-  local name email comment expire
-  name="${1?Please specify a name}"
-  comment="${2?Please specify a comment}"
-  email="${3?Please specify an email}"
-  gpg --armor --fingerprint --keyid-format LONG --with-colons \
-    "$name ($comment) <$email>" \
-    | grep fpr \
-    | grep --only-matching '[0-9A-Fa-f]\{40\}'
+function my_password_is_bad {
+  for password in password qwerty 12345 123456; do
+    if echo "$password" | timeout 1 su --command='exit 0' "$(whoami)" 2> /dev/null
+    then
+      return 0
+    fi
+  done
+  return 1
 }
 
 function generate_gpg_script {
@@ -67,6 +58,25 @@ Name-Comment: $comment
 Name-Email: $email
 Expire-Date: $expire
 EOF
+}
+
+function get_gpg_key_public_block {
+  local name email comment expire
+  name="${1?Please specify a name}"
+  comment="${2?Please specify a comment}"
+  email="${3?Please specify an email}"
+  gpg --armor --export "$name ($comment) <$email>"
+}
+
+function get_gpg_key_fingerprint {
+  local name email comment expire
+  name="${1?Please specify a name}"
+  comment="${2?Please specify a comment}"
+  email="${3?Please specify an email}"
+  gpg --armor --fingerprint --keyid-format LONG --with-colons \
+    "$name ($comment) <$email>" \
+    | grep fpr \
+    | grep --only-matching '[0-9A-Fa-f]\{40\}'
 }
 
 function populate {
@@ -101,16 +111,6 @@ function confirm {
     answer="${answer,,}"
   done
   [[ "$answer" =~ ^(yes)|(y)$ ]]
-}
-
-function my_password_is_bad {
-  for password in password qwerty 12345 123456; do
-    if echo "$password" | timeout 1 su --command='exit 0' "$(whoami)" 2> /dev/null
-    then
-      return 0
-    fi
-  done
-  return 1
 }
 
 function echo_tty {
