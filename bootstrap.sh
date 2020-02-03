@@ -32,6 +32,7 @@ function populate_git {
     echo_tty 'Populating git config...'
     email="$(read_with_confirm email)"
     fingerprint="$(generate_gpg_key "$NAME" git "$email" 1d)"
+    generate_ssh_key 'Autogen git' ~/.ssh/git
     populate ~/.gitconfig email "$email"
     populate ~/.gitconfig signingkey "$fingerprint"
   fi
@@ -43,11 +44,11 @@ function generate_gpg_key {
   comment="${2?Please specify a comment}"
   email="${3?Please specify an email}"
   expire="${4?Please specify an expiry pattern}"
-  echo_tty 'Generating GPG key...'
   fingerprint="$(get_gpg_key_fingerprint "$name" "$comment" "$email" 2> /dev/null)"
   if [[ "$?" -eq 0 ]]; then
-    echo_tty "Key with fingerprint $fingerprint found. Skipping key generation."
+    echo_tty "GPG key with fingerprint $fingerprint found. Skipping key generation."
   else
+    echo_tty 'Generating GPG key...'
     gpg --batch --generate-key \
       <(generate_gpg_script "$name" "$comment" "$email" "$expire") \
       > /dev/tty
@@ -88,6 +89,20 @@ function get_gpg_key_fingerprint {
     "$name ($comment) <$email>" \
     | grep fpr \
     | grep --only-matching '[0-9A-Fa-f]\{40\}'
+}
+
+function generate_ssh_key {
+  local comment path
+  comment="${1?Please specify a comment}"
+  path="${2?Please specify an output path}"
+  if [[ -f "$path" ]]; then
+    echo_tty "SSH key $path found. Skipping generation."
+  else
+    echo_tty "Generating SSH key $path..."
+    ssh-keygen -t ed25519 -C "$comment" -f "$path"
+  fi
+  echo_tty "Public key of $path"
+  cat "$path.pub"
 }
 
 function populate {
