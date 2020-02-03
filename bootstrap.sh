@@ -9,21 +9,21 @@ function main {
   populate_git
 }
 
-function populate_password {
-  if my_password_is_bad; then
-    echo_tty "Populating password..."
-    passwd
-  fi
-}
+####################
+# Population Areas #
+####################
 
-function my_password_is_bad {
+function populate_password {
+  local is_bad
+  is_bad=false
   for password in password qwerty 12345 123456; do
     if echo "$password" | timeout 1 su --command='exit 0' "$(whoami)" 2> /dev/null
     then
-      return 0
+      echo_tty "Populating password..."
+      passwd
+      break
     fi
   done
-  return 1
 }
 
 function populate_git {
@@ -37,6 +37,10 @@ function populate_git {
     populate ~/.gitconfig signingkey "$fingerprint"
   fi
 }
+
+#######
+# GPG #
+#######
 
 function generate_gpg_key {
   local name comment email expire fingerprint
@@ -91,6 +95,10 @@ function get_gpg_key_fingerprint {
     | grep --only-matching '[0-9A-Fa-f]\{40\}'
 }
 
+#######
+# SSH #
+#######
+
 function generate_ssh_key {
   local comment path
   comment="${1?Please specify a comment}"
@@ -104,6 +112,10 @@ function generate_ssh_key {
   echo_tty "Public key of $path"
   cat "$path.pub"
 }
+
+##############
+# Base Tools #
+##############
 
 function populate {
   echo_tty "Populating '$2' in file '$1'"
