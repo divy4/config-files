@@ -27,12 +27,13 @@ function populate_password {
 }
 
 function populate_git {
-  local email fingerprint
+  local email fingerprint comment
   if ! is_populated ~/.gitconfig; then
     echo_tty 'Populating git config...'
     email="$(read_with_confirm email)"
-    fingerprint="$(generate_gpg_key "$NAME" git "$email" 1d)"
-    generate_ssh_key 'Autogen git' ~/.ssh/git
+    comment="$(get_machine_id)-git"
+    fingerprint="$(generate_gpg_key "$NAME" "$comment" "$email" 1d)"
+    generate_ssh_key "$comment" ~/.ssh/git
     populate ~/.gitconfig email "$email"
     populate ~/.gitconfig signingkey "$fingerprint"
   fi
@@ -150,6 +151,10 @@ function confirm {
     answer="${answer,,}"
   done
   [[ "$answer" =~ ^(yes)|(y)$ ]]
+}
+
+function get_machine_id {
+  cat /etc/machine-id
 }
 
 function echo_tty {
