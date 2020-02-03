@@ -4,32 +4,15 @@ set -e
 NAME='Dan Ivy'
 
 function main {
-  echo 'Configuring first time setup...'
+  echo_tty 'Configuring first time setup...'
   populate_password
   populate_git
 }
 
 function populate_password {
   if my_password_is_bad; then
-    echo "Populating password"
+    echo_tty "Populating password..."
     passwd
-  fi
-}
-
-function populate_git {
-  local email fingerprint
-  if ! is_populated ~/.gitconfig; then
-    echo 'Populating git config...'
-    email="$(read_with_confirm email)"
-    echo 'Please enter a password for your git signing key'
-    sleep 1
-    gpg --batch --generate-key \
-      <(generate_gpg_script "$NAME" git "$email" 1d)
-    fingerprint="$(get_gpg_key_fingerprint "$NAME" git "$email")"
-    populate ~/.gitconfig email "$email"
-    populate ~/.gitconfig signingkey "$fingerprint"
-    echo 'Generated key public block:'
-    get_gpg_key_public_block "$NAME" git "$email"
   fi
 }
 
@@ -41,6 +24,37 @@ function my_password_is_bad {
     fi
   done
   return 1
+}
+
+function populate_git {
+  local email fingerprint
+  if ! is_populated ~/.gitconfig; then
+    echo_tty 'Populating git config...'
+    email="$(read_with_confirm email)"
+    fingerprint="$(generate_gpg_key "$NAME" git "$email" 1d)"
+    populate ~/.gitconfig email "$email"
+    populate ~/.gitconfig signingkey "$fingerprint"
+  fi
+}
+
+function generate_gpg_key {
+  local name comment email expire fingerprint
+  name="${1?Please specify a name}"
+  comment="${2?Please specify a comment}"
+  email="${3?Please specify an email}"
+  expire="${4?Please specify an expiry pattern}"
+  echo_tty 'Generating GPG key...'
+  fingerprint="$(get_gpg_key_fingerprint "$name" "$comment" "$email" 2> /dev/null)"
+  if [[ "$?" -eq 0 ]]; then
+    echo_tty "Key with fingerprint $fingerprint found. Skipping key generation."
+  else
+    gpg --batch --generate-key \
+      <(generate_gpg_script "$name" "$comment" "$email" "$expire") \
+      > /dev/tty
+    fingerprint="$(get_gpg_key_fingerprint "$name" "$comment" "$email")"
+  fi
+  get_gpg_key_public_block "$fingerprint" > /dev/tty
+  echo "$fingerprint"
 }
 
 function generate_gpg_script {
@@ -61,15 +75,12 @@ EOF
 }
 
 function get_gpg_key_public_block {
-  local name email comment expire
-  name="${1?Please specify a name}"
-  comment="${2?Please specify a comment}"
-  email="${3?Please specify an email}"
-  gpg --armor --export "$name ($comment) <$email>"
+  echo_tty 'GPG key public block:'
+  gpg --armor --export "$1"
 }
 
 function get_gpg_key_fingerprint {
-  local name email comment expire
+  local name email comment
   name="${1?Please specify a name}"
   comment="${2?Please specify a comment}"
   email="${3?Please specify an email}"
@@ -80,6 +91,7 @@ function get_gpg_key_fingerprint {
 }
 
 function populate {
+  echo_tty "Populating '$2' in file '$1'"
   sed --in-place --expression="s/# populate $2$/$3/g" "$1"
 }
 
