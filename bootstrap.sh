@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -e
 
+BAD_PASSWORDS=(password qwerty 12345)
 NAME='Dan Ivy'
 
 function main {
   echo_tty 'Configuring first time setup...'
-  populate_password
+  populate_passwords
   populate_git
 }
 
@@ -13,17 +14,15 @@ function main {
 # Population Areas #
 ####################
 
-function populate_password {
-  local is_bad
-  is_bad=false
-  for password in password qwerty 12345 123456; do
-    if echo "$password" | timeout 1 su --command='exit 0' "$(whoami)" 2> /dev/null
-    then
-      echo_tty "Populating password..."
-      passwd
-      break
-    fi
-  done
+function populate_passwords {
+  if user_has_a_bad_password "$(whoami)"; then
+    echo_tty "Populating password for $(whoami)..."
+    passwd
+  fi
+  if user_has_a_bad_password root; then
+    echo_tty "Populating password for root..."
+    obscure_password root || true # Don't fail on error
+  fi
 }
 
 function populate_git {
@@ -37,6 +36,32 @@ function populate_git {
     populate ~/.gitconfig email "$email"
     populate ~/.gitconfig signingkey "$fingerprint"
   fi
+}
+
+#############
+# Passwords #
+#############
+
+function user_has_a_bad_password {
+  local password
+  for password in "${BAD_PASSWORDS[@]}"; do
+    if echo "$password" | timeout 1 su --command='exit 0' "$1" 2> /dev/null
+    then
+      return 0
+    fi
+  done
+  return 1
+}
+
+function obscure_password {
+  local user password
+  user="${1?Please specify a user}"
+  password="$(generate_password 256)"
+  sudo bash -c "echo -e '$password\n$password\n' | passwd '$user'"
+}
+
+function generate_password {
+  cat /dev/urandom | tr -dc 'a-zA-Z0-9-_' | fold -w "$1" | head -n 1
 }
 
 #######

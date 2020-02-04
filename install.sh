@@ -77,6 +77,15 @@ function config_nano {
   fi
 }
 
+function config_scripts {
+  if is_root; then
+    copy directory scripts /usr/local/bin
+    return 1
+  else
+    echo_err 'Non-root scripts config not supported!'
+  fi
+}
+
 function config_ssh {
   if is_root; then
     echo_err 'Root ssh config not supported!'
