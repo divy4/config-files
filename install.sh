@@ -28,6 +28,15 @@ function config_bash {
   fi
 }
 
+function config_code {
+  if is_root; then
+    echo_err 'Root code config not supported!'
+    return 1
+  else
+    copy file code.json ~/.config/Code\ -\ OSS/User/settings.json
+  fi
+}
+
 function config_conemu {
   if is_root; then
     echo_err 'Root conemu config not supported!'
