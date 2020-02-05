@@ -89,9 +89,9 @@ function config_nano {
 function config_scripts {
   if is_root; then
     copy directory scripts /usr/local/bin
-    return 1
   else
     echo_err 'Non-root scripts config not supported!'
+    return 1
   fi
 }
 
