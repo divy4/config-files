@@ -28,6 +28,15 @@ function config_bash {
   fi
 }
 
+function config_chromium {
+  if is_root; then
+    echo_err 'Root chromium config not supported!'
+    return 1
+  else
+    copy file chromium-flags.conf ~/.config/chromium-flags.conf
+  fi
+}
+
 function config_code {
   if is_root; then
     echo_err 'Root code config not supported!'
