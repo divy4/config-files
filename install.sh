@@ -52,10 +52,10 @@ function config_fluxbox {
     echo_err 'Root fluxbox config not supported!'
     return 1
   else
-    copy directory fluxbox ~/.fluxbox
-    copy file fluxbox_xinitrc ~/.xinitrc
-    copy file fluxbox_Xdefaults ~/.Xdefaults
-    copy file fluxbox_Xresources ~/.Xresources
+    copy directory fluxbox/fluxbox ~/.fluxbox
+    copy file fluxbox/xinitrc ~/.xinitrc
+    copy file fluxbox/Xdefaults ~/.Xdefaults
+    copy file fluxbox/Xresources ~/.Xresources
     mapfile -t apps < <(\
       grep '# autoexec' ~/.fluxbox/menu \
       | sed --regexp-extended --expression='s/.*\((\w+)\).*/\1/g' \
