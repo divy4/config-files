@@ -34,6 +34,12 @@ function config_chromium {
     return 1
   else
     copy file chromium-flags.conf ~/.config/chromium-flags.conf
+    cat ~/.config/chromium/Default/Preferences \
+      | jq '.browser.custom_chrome_frame=false' \
+      | jq ".download.default_directory=\"$HOME/downloads/\"" \
+      | jq ".savefile.default_directory=\"$HOME/downloads/\"" \
+      > temp
+    mv temp ~/.config/chromium/Default/Preferences
   fi
 }
 
