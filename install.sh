@@ -52,7 +52,8 @@ function config_code {
     echo_err 'Root code config not supported!'
     return 1
   else
-    copy file code.json ~/.config/Code\ -\ OSS/User/settings.json
+    copy file code/settings.json ~/.config/Code\ -\ OSS/User/settings.json
+    cat code/extensions | xargs --max-lines=1 code --install-extension
   fi
 }
 
