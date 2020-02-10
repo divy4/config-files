@@ -5,9 +5,14 @@ BAD_PASSWORDS=(password qwerty 12345)
 NAME='Dan Ivy'
 
 function main {
-  echo_tty 'Configuring first time setup...'
-  populate_passwords
-  populate_git
+  if [[ ! -d /etc/X11/ ]] || xhost 2&> /dev/null; then
+    echo_tty 'Running first time setup...'
+    populate_passwords
+    populate_git
+  else
+    echo "Please start an X session before running first time setup."
+    return 1
+  fi
 }
 
 ####################
