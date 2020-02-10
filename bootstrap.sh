@@ -9,6 +9,7 @@ function main {
     echo_tty 'Running first time setup...'
     populate_passwords
     populate_git
+    populate_fluxbox
   else
     echo "Please start an X session before running first time setup."
     return 1
@@ -40,6 +41,32 @@ function populate_git {
     generate_ssh_key "$comment" ~/.ssh/git
     populate ~/.gitconfig email "$email"
     populate ~/.gitconfig signingkey "$fingerprint"
+  fi
+}
+
+function populate_fluxbox {
+  local full third tenth mappings
+  if [[ -f ~/.fluxbox/keys ]]; then
+    full="$(get_screen_width)"
+    third=$((full / 3))
+    tenth=$((full / 10))
+    mappings=(\
+      23% $((third - tenth))
+      24% $((full - 2 * third - tenth))
+      33% "$third"
+      34% $((full - 2 * third))
+      43% $((third + tenth))
+      44% $((full - 2 * third + tenth))
+      56% $((2 * third - tenth))
+      57% $((full - third - tenth))
+      66% $((2 * third))
+      67% $((full - third))
+      76% $((2 * third + tenth))
+      77% $((full - third + tenth))
+    )
+    for ((i=0; i<${#mappings[@]}; i=i+2)); do
+      sed --in-place "s/${mappings[i]}/${mappings[i+1]}/g" ~/.fluxbox/keys
+    done
   fi
 }
 
@@ -142,6 +169,18 @@ function generate_ssh_key {
   fi
   echo_tty "Public key of $path"
   cat "$path.pub"
+}
+
+#####
+# X #
+#####
+
+function get_screen_height {
+  xrandr | grep '\*' | tr 'x' ' ' | awk '{print $2}'
+}
+
+function get_screen_width {
+  xrandr | grep '\*' | tr 'x' ' ' | awk '{print $1}'
 }
 
 ##############
