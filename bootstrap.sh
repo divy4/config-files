@@ -67,7 +67,7 @@ function populate_fluxbox {
     )
     keys="$(cat ~/.fluxbox/keys)"
     for ((i=0; i<${#mappings[@]}; i=i+2)); do
-      keys="$(echo "$keys" | sed "s/${mappings[i]}/${mappings[i+1]}/g")"
+      keys="${keys//${mappings[i]}/${mappings[i+1]}}"
     done
     echo "$keys" > ~/.fluxbox/keys
     echo_tty 'Please reload Fluxbox configs to see proper settings'
@@ -97,7 +97,7 @@ function obscure_password {
 }
 
 function generate_password {
-  cat /dev/urandom | tr -dc 'a-zA-Z0-9-_' | fold -w "$1" | head -n 1
+  tr -dc 'a-zA-Z0-9-_' < /dev/urandom | fold -w "$1" | head -n 1
 }
 
 #######
@@ -110,8 +110,9 @@ function generate_gpg_key {
   comment="${2?Please specify a comment}"
   email="${3?Please specify an email}"
   expire="${4?Please specify an expiry pattern}"
-  fingerprint="$(get_gpg_key_fingerprint "$name" "$comment" "$email" 2> /dev/null)"
-  if [[ "$?" -eq 0 ]]; then
+  if fingerprint="$(\
+      get_gpg_key_fingerprint "$name" "$comment" "$email" 2> /dev/null\
+      )"; then
     echo_tty "GPG key with fingerprint $fingerprint found. Skipping key generation."
   else
     echo_tty 'Generating GPG key...'
