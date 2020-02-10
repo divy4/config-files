@@ -47,6 +47,7 @@ function populate_git {
 function populate_fluxbox {
   local full third tenth mappings
   if [[ -f ~/.fluxbox/keys ]]; then
+    echo_tty 'Populating Fluxbox config...'
     full="$(get_screen_width)"
     third=$((full / 3))
     tenth=$((full / 10))
@@ -64,9 +65,12 @@ function populate_fluxbox {
       76% $((2 * third + tenth))
       77% $((full - third + tenth))
     )
+    keys="$(cat ~/.fluxbox/keys)"
     for ((i=0; i<${#mappings[@]}; i=i+2)); do
-      sed --in-place "s/${mappings[i]}/${mappings[i+1]}/g" ~/.fluxbox/keys
+      keys="$(echo "$keys" | sed "s/${mappings[i]}/${mappings[i+1]}/g")"
     done
+    echo "$keys" > ~/.fluxbox/keys
+    echo_tty 'Please reload Fluxbox configs to see proper settings'
   fi
 }
 
