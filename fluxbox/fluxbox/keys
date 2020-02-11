@@ -149,13 +149,10 @@ OnTitlebar Control Mouse1 :StartTabbing
 
 ## windows
 
-### move/resize window
+### move/resize/tab window
 OnWindow Mod4 Mouse1 :MacroCmd {Raise} {Focus} {StartMoving}
-OnWindowBorder Move1 :StartMoving
-
+OnWindow Mod4 Mouse2 :MacroCmd {Raise} {Focus} {StartTabbing}
 OnWindow Mod4 Mouse3 :MacroCmd {Raise} {Focus} {StartResizing NearestCorner}
-OnLeftGrip Move1 :StartResizing bottomleft
-OnRightGrip Move1 :StartResizing bottomright
 
 ### move window
 OnTitlebar Mouse1 :MacroCmd {Raise} {Focus} {ActivateTab}
