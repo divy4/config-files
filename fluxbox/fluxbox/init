@@ -23,7 +23,7 @@ session.screen0.clickRaises:                        false
 session.screen0.clientMenu.usePixmap:               true
 session.screen0.colPlacementDirection:              TopToBottom
 session.screen0.decorateTransient:                  false
-session.screen0.defaultDeco:                        NORMAL
+session.screen0.defaultDeco:                        NONE
 session.screen0.edgeSnapThreshold:                  10
 session.screen0.focusLastWindow:                    false
 session.screen0.focusModel:                         MouseFocus
