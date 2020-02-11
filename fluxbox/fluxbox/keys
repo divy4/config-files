@@ -171,3 +171,8 @@ OnTitlebar Mouse3 :WindowMenu
 OnDesktop Mouse1 :HideMenus
 OnDesktop Mouse2 :WorkspaceMenu
 OnDesktop Mouse3 :RootMenu
+
+
+## Screenshots
+
+Print :Exec import ~/screenshot.png
