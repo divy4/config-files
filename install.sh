@@ -217,4 +217,7 @@ function echo_err {
   >&2 echo "$@"
 }
 
+# cd to directory containing this script
+cd "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
+
 main "$@"
