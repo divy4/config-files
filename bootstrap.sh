@@ -10,6 +10,7 @@ function main {
     populate_passwords
     populate_git
     populate_fluxbox
+    populate_ssh
   else
     echo "Please start an X session before running first time setup."
     return 1
@@ -72,6 +73,11 @@ function populate_fluxbox {
     echo "$keys" > ~/.fluxbox/keys
     echo_tty 'Please reload Fluxbox configs to see proper settings'
   fi
+}
+
+function populate_ssh {
+  generate_ssh_key "$comment" ~/.ssh/localhost
+  append_line_if_not_present "$(cat ~/.ssh/localhost.pub)" ~/.ssh/authorized_keys
 }
 
 #############
@@ -225,6 +231,16 @@ function confirm {
     answer="${answer,,}"
   done
   [[ "$answer" =~ ^(yes)|(y)$ ]]
+}
+
+function append_line_if_not_present {
+  if ! grep \
+      --fixed-strings \
+      --line-regexp \
+      --quiet \
+      "$1" "$2"; then
+    echo "$1" >> "$2"
+  fi
 }
 
 function get_machine_id {
