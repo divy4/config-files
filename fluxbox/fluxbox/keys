@@ -27,6 +27,7 @@ Control 49 :Exec xterm
 Mod4 a :Exec xterm alsamixer
 Mod4 c :Exec code
 Mod4 d :Exec deluge
+Mod4 f :Exec nemo
 Mod4 n :Exec chromium
 Mod4 Shift n :Exec chromium --incognito
 Mod4 r :Exec remmina
