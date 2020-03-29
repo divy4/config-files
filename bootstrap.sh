@@ -76,7 +76,7 @@ function populate_fluxbox {
 }
 
 function populate_ssh {
-  generate_ssh_key "$comment" ~/.ssh/localhost
+  generate_ssh_key "localhost" ~/.ssh/localhost
   append_line_if_not_present "$(cat ~/.ssh/localhost.pub)" ~/.ssh/authorized_keys
 }
 
