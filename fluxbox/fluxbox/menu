@@ -20,6 +20,7 @@
   # autoexec [exec] (chromium) {chromium}
   # autoexec [exec] (code) {code}
   # autoexec [exec] (deluge) {deluge}
+  # autoexec [exec] (nemo) {nemo}
   # autoexec [exec] (remmina) {virtualbox}
   # autoexec [exec] (slack) {slack}
   # autoexec [exec] (virtualbox) {virtualbox}
