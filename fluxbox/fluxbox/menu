@@ -21,7 +21,7 @@
   # autoexec [exec] (code) {code}
   # autoexec [exec] (deluge) {deluge}
   # autoexec [exec] (nemo) {nemo}
-  # autoexec [exec] (remmina) {virtualbox}
+  # autoexec [exec] (remmina) {remmina}
   # autoexec [exec] (slack) {slack}
   # autoexec [exec] (virtualbox) {virtualbox}
   # autoexec [exec] (xterm) {xterm}
