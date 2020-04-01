@@ -176,6 +176,11 @@ OnDesktop Mouse2 :WorkspaceMenu
 OnDesktop Mouse3 :RootMenu
 
 
-## Screenshots
+## Misc
 
+# Print Screen = Screenshot
 Print :Exec import ~/screenshot.png
+# win + page up = enable transparency
+Mod4 112  :Exec ps -u "$(whoami)" | grep xcompmgr || nohup xcompmgr > /dev/null &
+# win + page down = disable transparency
+Mod4 117  :Exec killall xcompmgr
