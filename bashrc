@@ -8,9 +8,9 @@ if [[ -n "$SSH_CONNECTION" ]]; then
   export PINENTRY_USER_DATA="USE_CURSES=1"
 fi
 
-# set VS Code as default editor, vim as secondary
+# set VS Code as default editor
 export VISUAL='code --wait'
-export EDITOR='vim'
+export EDITOR='code --wait'
 
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
@@ -63,6 +63,7 @@ alias cls='clear;ls'
 alias df='df -h'
 alias du='du -cah --apparent-size'
 alias gdiff='git diff --no-index'
+alias k='kubectl'
 alias l='ls'
 alias ls='ls --color=auto'
 alias la='ls -a'
