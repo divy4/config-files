@@ -44,9 +44,9 @@ function populate_git {
     email="$(read_with_confirm email)"
     comment="$(get_machine_id)-git"
     fingerprint="$(generate_gpg_key "$NAME" "$comment" "$email" 1d)"
-    generate_ssh_key "$comment" ~/.ssh/git
     populate ~/.gitconfig email "$email"
     populate ~/.gitconfig signingkey "$fingerprint"
+    generate_ssh_key "$comment" ~/.ssh/git
   fi
 }
 
@@ -133,19 +133,17 @@ function generate_gpg_key {
   comment="${2?Please specify a comment}"
   email="${3?Please specify an email}"
   expire="${4?Please specify an expiry pattern}"
-  if fingerprint="$(\
-      get_gpg_key_fingerprint "$name" "$comment" "$email" 2> /dev/null\
-      )"; then
-    echo_tty "GPG key with fingerprint $fingerprint found. Skipping key generation."
+  fingerprint="$(get_gpg_key_fingerprint "$name" "$comment" "$email")"
+  if [[ -n "$fingerprint" ]]; then
+    echo_tty "GPG key with fingerprint $fingerprint found. Skipping generation."
   else
     echo_tty 'Generating GPG key...'
     gpg --batch --generate-key \
       <(generate_gpg_script "$name" "$comment" "$email" "$expire") \
       > /dev/tty
-    fingerprint="$(get_gpg_key_fingerprint "$name" "$comment" "$email")"
   fi
   get_gpg_key_public_block "$fingerprint" > /dev/tty
-  echo "$fingerprint"
+  get_gpg_key_fingerprint "$name" "$comment" "$email"
 }
 
 function generate_gpg_script {
@@ -166,8 +164,10 @@ EOF
 }
 
 function get_gpg_key_public_block {
+  local fingerprint
+  fingerprint="${1?Please specify a key fingerprint}"
   echo_tty 'GPG key public block:'
-  gpg --armor --export "$1"
+  gpg --armor --export "$fingerprint"
 }
 
 function get_gpg_key_fingerprint {
@@ -177,6 +177,7 @@ function get_gpg_key_fingerprint {
   email="${3?Please specify an email}"
   gpg --armor --fingerprint --keyid-format LONG --with-colons \
     "$name ($comment) <$email>" \
+    2> /dev/null \
     | grep fpr \
     | grep --only-matching '[0-9A-Fa-f]\{40\}'
 }
