@@ -14,7 +14,7 @@ function main {
     populate_fluxbox
     populate_ssh
   else
-    echo "Please start an X session before running first time setup."
+    echo_tty "Please start an X session before running first time setup."
     return 1
   fi
 }
