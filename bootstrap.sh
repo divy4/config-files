@@ -26,12 +26,12 @@ function main {
 function populate_passwords {
   local user
   for user in "${ASSIGNED_PASSWORD_USERS[@]}"; do
-    if user_has_a_bad_password "$user"; then
+    if user_has_bad_password "$user"; then
       prompt_password "$user"
     fi
   done
   for user in "${RANDOM_PASSWORD_USERS[@]}"; do
-    if user_has_a_bad_password "$user"; then
+    if user_has_bad_password "$user"; then
       set_random_password "$user"
     fi
   done
@@ -89,14 +89,18 @@ function populate_ssh {
 # Passwords #
 #############
 
-function user_has_a_bad_password {
-  local password
+function user_has_bad_password {
+  local user password
+  user="${1?Please specify a user}"
+  echo_tty "Attempting to crack $user's password..."
   for password in "${BAD_PASSWORDS[@]}"; do
-    if echo "$password" | timeout 1 su --command='exit 0' "$1" 2> /dev/null
+    if echo "$password" | timeout 1 su --command='exit 0' "$user" 2> /dev/null
     then
+      echo_tty "Cracked password successfully."
       return 0
     fi
   done
+  echo_tty "Password is secure."
   return 1
 }
 
