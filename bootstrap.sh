@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
+ASSIGNED_PASSWORD_USERS=("$(whoami)")
 BAD_PASSWORDS=(password qwerty 12345)
 NAME='Dan Ivy'
+RANDOM_PASSWORD_USERS=(root docker)
 
 function main {
   if [[ ! -d /etc/X11/ ]] || xhost 2&> /dev/null; then
@@ -12,7 +14,7 @@ function main {
     populate_fluxbox
     populate_ssh
   else
-    echo "Please start an X session before running first time setup."
+    echo_tty "Please start an X session before running first time setup."
     return 1
   fi
 }
@@ -22,14 +24,17 @@ function main {
 ####################
 
 function populate_passwords {
-  if user_has_a_bad_password "$(whoami)"; then
-    echo_tty "Populating password for $(whoami)..."
-    passwd
-  fi
-  if user_has_a_bad_password root; then
-    echo_tty "Populating password for root..."
-    obscure_password root || true # Don't fail on error
-  fi
+  local user
+  for user in "${ASSIGNED_PASSWORD_USERS[@]}"; do
+    if user_has_bad_password "$user"; then
+      prompt_password "$user"
+    fi
+  done
+  for user in "${RANDOM_PASSWORD_USERS[@]}"; do
+    if user_has_bad_password "$user"; then
+      set_random_password "$user"
+    fi
+  done
 }
 
 function populate_git {
@@ -39,9 +44,9 @@ function populate_git {
     email="$(read_with_confirm email)"
     comment="$(get_machine_id)-git"
     fingerprint="$(generate_gpg_key "$NAME" "$comment" "$email" 1d)"
-    generate_ssh_key "$comment" ~/.ssh/git
     populate ~/.gitconfig email "$email"
     populate ~/.gitconfig signingkey "$fingerprint"
+    generate_ssh_key "$comment" ~/.ssh/git
   fi
 }
 
@@ -84,20 +89,36 @@ function populate_ssh {
 # Passwords #
 #############
 
-function user_has_a_bad_password {
-  local password
+function user_has_bad_password {
+  local user password
+  user="${1?Please specify a user}"
+  echo_tty "Attempting to crack $user's password..."
   for password in "${BAD_PASSWORDS[@]}"; do
-    if echo "$password" | timeout 1 su --command='exit 0' "$1" 2> /dev/null
+    if echo "$password" | timeout 1 su --command='exit 0' "$user" 2> /dev/null
     then
+      echo_tty "Cracked password successfully."
       return 0
     fi
   done
+  echo_tty "Password is secure."
   return 1
 }
 
-function obscure_password {
+function prompt_password {
+  local user
+  user="${1?Please specify a user}"
+  echo_tty "Assinging password for $user..."
+  if [[ "$user" == "$(whoami)" ]]; then
+    passwd
+  else
+    sudo passwd "$user"
+  fi
+}
+
+function set_random_password {
   local user password
   user="${1?Please specify a user}"
+  echo_tty "Assigning random password for $user..."
   password="$(generate_password 256)"
   sudo bash -c "echo -e '$password\n$password\n' | passwd '$user'"
 }
@@ -116,19 +137,17 @@ function generate_gpg_key {
   comment="${2?Please specify a comment}"
   email="${3?Please specify an email}"
   expire="${4?Please specify an expiry pattern}"
-  if fingerprint="$(\
-      get_gpg_key_fingerprint "$name" "$comment" "$email" 2> /dev/null\
-      )"; then
-    echo_tty "GPG key with fingerprint $fingerprint found. Skipping key generation."
+  fingerprint="$(get_gpg_key_fingerprint "$name" "$comment" "$email")"
+  if [[ -n "$fingerprint" ]]; then
+    echo_tty "GPG key with fingerprint $fingerprint found. Skipping generation."
   else
     echo_tty 'Generating GPG key...'
     gpg --batch --generate-key \
       <(generate_gpg_script "$name" "$comment" "$email" "$expire") \
       > /dev/tty
-    fingerprint="$(get_gpg_key_fingerprint "$name" "$comment" "$email")"
   fi
   get_gpg_key_public_block "$fingerprint" > /dev/tty
-  echo "$fingerprint"
+  get_gpg_key_fingerprint "$name" "$comment" "$email"
 }
 
 function generate_gpg_script {
@@ -149,8 +168,10 @@ EOF
 }
 
 function get_gpg_key_public_block {
+  local fingerprint
+  fingerprint="${1?Please specify a key fingerprint}"
   echo_tty 'GPG key public block:'
-  gpg --armor --export "$1"
+  gpg --armor --export "$fingerprint"
 }
 
 function get_gpg_key_fingerprint {
@@ -160,6 +181,7 @@ function get_gpg_key_fingerprint {
   email="${3?Please specify an email}"
   gpg --armor --fingerprint --keyid-format LONG --with-colons \
     "$name ($comment) <$email>" \
+    2> /dev/null \
     | grep fpr \
     | grep --only-matching '[0-9A-Fa-f]\{40\}'
 }
