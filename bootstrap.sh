@@ -4,7 +4,6 @@ set -e
 ASSIGNED_PASSWORD_USERS=("$(whoami)")
 BAD_PASSWORDS=(password qwerty 12345)
 NAME='Dan Ivy'
-RANDOM_PASSWORD_USERS=(root docker)
 
 function main {
   if [[ ! -d /etc/X11/ ]] || xhost 2&> /dev/null; then
@@ -28,11 +27,6 @@ function populate_passwords {
   for user in "${ASSIGNED_PASSWORD_USERS[@]}"; do
     if user_has_bad_password "$user"; then
       prompt_password "$user"
-    fi
-  done
-  for user in "${RANDOM_PASSWORD_USERS[@]}"; do
-    if user_has_bad_password "$user"; then
-      set_random_password "$user"
     fi
   done
 }
@@ -113,18 +107,6 @@ function prompt_password {
   else
     sudo passwd "$user"
   fi
-}
-
-function set_random_password {
-  local user password
-  user="${1?Please specify a user}"
-  echo_tty "Assigning random password for $user..."
-  password="$(generate_password 256)"
-  sudo bash -c "echo -e '$password\n$password\n' | passwd '$user'"
-}
-
-function generate_password {
-  tr -dc 'a-zA-Z0-9-_' < /dev/urandom | fold -w "$1" | head -n 1
 }
 
 #######
