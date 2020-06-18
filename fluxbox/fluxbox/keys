@@ -32,8 +32,7 @@ Mod4 n :Exec chromium
 Mod4 Shift n :Exec chromium --incognito
 Mod4 r :Exec remmina
 Mod4 s :Exec slack
-Mod4 t :Exec xterm
-Mod4 x :Exec xterm
+Mod4 t :Exec teams
 
 
 ## window snapping
