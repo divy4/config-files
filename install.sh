@@ -95,6 +95,9 @@ function config_git {
     return 1
   else
     copy file gitconfig ~/.gitconfig
+    if ! command -v gpg2; then
+      sed --in-place 's/gpg2/gpg/g' ~/.gitconfig
+    fi
   fi
 }
 
