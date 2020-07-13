@@ -248,7 +248,11 @@ function append_line_if_not_present {
 }
 
 function get_machine_id {
-  cat /etc/machine-id
+  if [[ -f /etc/machine-id ]]; then
+    cat /etc/machine-id
+  else
+    echo "$HOSTNAME"
+  fi
 }
 
 function echo_tty {
