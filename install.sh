@@ -41,6 +41,7 @@ function config_chromium {
       mkdir --parents ~/.config/chromium/Default/
     fi
     jq '.browser.custom_chrome_frame=false' /tmp/Preferences \
+      | jq ".credentials_enable_service=false" \
       | jq ".download.default_directory=\"$HOME/downloads/\"" \
       | jq ".savefile.default_directory=\"$HOME/downloads/\"" \
       > ~/.config/chromium/Default/Preferences
