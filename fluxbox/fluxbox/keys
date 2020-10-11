@@ -139,6 +139,7 @@ Control Mod4 Right :TakeToNextWorkspace
 
 ### exit fluxbox
 Control Mod1 Delete :Exit
+Shift Mod4 q :Exit
 
 
 # mouse commands
