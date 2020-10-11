@@ -1,6 +1,6 @@
 XClock*analog: false
 XClock*background: black
-XClock*font: Ubuntu
+XClock*face: Ubuntu White-20
 XClock*foreground: white
 XClock*padding: 1
 XClock*update: 1
