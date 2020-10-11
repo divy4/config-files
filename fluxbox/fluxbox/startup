@@ -12,7 +12,7 @@ if command -v VBoxClient-all; then
 fi
 
 # Clock
-lal &
+xclock -strftime '%A %m/%d/%Y %I:%M:%S %p' &
 
 # Run fluxbox
 exec fluxbox

@@ -1,3 +1,9 @@
+XClock*analog: false
+XClock*background: black
+XClock*font: Ubuntu
+XClock*foreground: white
+XClock*padding: 1
+XClock*update: 1
 Xcursor.size: 8
 xterm*background: black
 xterm*faceName: Ubuntu Mono
