@@ -25,6 +25,7 @@
   # autoexec [exec] (slack) {slack}
   # autoexec [exec] (teams) {teams}
   # autoexec [exec] (virtualbox) {virtualbox}
+  # autoexec [exec] (vmware-view) {vmware-view}
   # autoexec [exec] (xterm) {xterm}
   [submenu] (Fluxbox menu)
     [config] (Configure)
