@@ -6,11 +6,13 @@ BAD_PASSWORDS=(password qwerty 12345)
 NAME='Dan Ivy'
 
 function main {
-  if [[ ! -d /etc/X11/ ]] || xhost 2&> /dev/null; then
+  # Disabled until I use tripple monitors again
+  if true || [[ ! -d /etc/X11/ ]] || xhost 2&> /dev/null; then
     echo_tty 'Running first time setup...'
     populate_passwords
     populate_git
-    populate_fluxbox
+    # Disabled until I use tripple monitors again
+    # populate_fluxbox
     populate_ssh
   else
     echo_tty "Please start an X session before running first time setup."
