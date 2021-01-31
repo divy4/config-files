@@ -11,6 +11,11 @@ if command -v VBoxClient-all; then
   VBoxClient-all
 fi
 
+# Fetch a new background
+if command -v fetchbackground; then
+  fetchbackground
+fi
+
 # Clock
 xclock -strftime '%A %m/%d/%Y %I:%M:%S %p' &
 
