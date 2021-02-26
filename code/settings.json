@@ -31,7 +31,8 @@
   "editor.tabSize": 2,
   "extensions.ignoreRecommendations": false,
   "files.associations": {
-    "**/ansible/**/*.yml": "ansible"
+    "**/ansible/**/*.yml": "ansible",
+    "**/Dockerfile*": "dockerfile"
   },
   "files.eol": "\n",
   "files.insertFinalNewline": true,
