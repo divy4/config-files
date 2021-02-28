@@ -3,7 +3,7 @@
   email = # populate email
   signingkey = # populate signingkey
 [core]
-  editor = vim
+  editor = code --wait
   encoding = utf-8
   pager = less -X
 [gpg]
