@@ -24,7 +24,6 @@ function config_bash {
     return 1
   else
     install --mode=644 bash/bashrc ~/.bashrc
-    install --mode=644 bash/profile ~/.profile
     install --mode=755 bash/bootstrap.sh ~/.bootstrap.sh
   fi
 }
