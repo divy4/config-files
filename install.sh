@@ -91,6 +91,21 @@ function config_nano {
   fi
 }
 
+function config_powershell {
+  local module_path
+  #shellcheck disable=SC2016,SC1003
+  module_path="$(cygpath "$(powershell '$env:PSModulePath' \
+  | tr ';' '\n' \
+  | grep '\\Users\\' \
+  | head -1 \
+  )")"
+  mkdir --parents "$module_path"
+  cp --recursive powershell/* "$module_path"
+  if [[ "$(powershell 'Get-ExecutionPolicy')" != 'Unrestricted' ]]; then
+    run_command_as_admin powershell 'Set-ExecutionPolicy Unrestricted'
+  fi
+}
+
 function config_scripts {
   if is_root; then
     install --mode=755 --owner=root --group=root scripts/* /usr/local/bin/
@@ -180,6 +195,18 @@ function echo_tty {
 
 function echo_err {
   >&2 echo "$@"
+}
+
+function run_command_as_admin {
+  # TODO: Throw error if exit code is nonzero
+  powershell Start-Process -Wait -Verb RunAs \
+    "$1" -ArgumentList "$(build_powershell_argument_list "${@:2}")"
+}
+
+function build_powershell_argument_list {
+  printf "@('\"%s\"'" "$1"
+  printf ",'\"%s\"'" "${@:2}"
+  printf ')'
 }
 
 # cd to directory containing this script
