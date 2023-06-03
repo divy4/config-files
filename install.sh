@@ -38,15 +38,6 @@ function config_code {
   fi
 }
 
-function config_conemu {
-  if is_root; then
-    echo_err 'Root conemu config not supported!'
-    return 1
-  else
-    install --mode=644 ConEmu.xml "$APPDATA/ConEmu.xml"
-  fi
-}
-
 function config_fluxbox {
   local apps app exp
   if is_root; then
