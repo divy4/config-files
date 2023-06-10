@@ -18,6 +18,8 @@ function main {
   done
 }
 
+# Configs
+
 function config_bash {
   if is_root; then
     echo_err 'Root bash config not supported!'
@@ -109,6 +111,8 @@ function config_vim {
     install --mode=644 vimrc ~/.vimrc
   fi
 }
+
+# Helpers
 
 function get_config_functions {
   declare -F \
