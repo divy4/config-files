@@ -1,6 +1,10 @@
+# Find window info with xprop
 [app] (name=fbrun)
   [Position]	(CENTER)	{0 0}
   [Layer]	{2}
+[end]
+[app] (class=Gimp)
+  [Alpha]	{255}
 [end]
 [app] (name=xclock) (class=XClock)
   [Position]	(TOP)	{0% 0%}
