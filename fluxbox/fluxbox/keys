@@ -176,9 +176,10 @@ OnTitlebar Control Mouse1 :StartTabbing
 ## windows
 
 ### move/tab/edit window
-OnWindow Mod4 Mouse1 :MacroCmd {Raise} {Focus} {StartMoving}
-OnWindow Mod4 Mouse2 :MacroCmd {Raise} {Focus} {StartTabbing}
-OnWindow Mod4 Mouse3 :MacroCmd {Raise} {Focus} {WindowMenu}
+OnWindow         Mod4 Mouse1 :MacroCmd {Raise} {Focus} {StartMoving}
+OnWindow Control Mod4 Mouse1 :MacroCmd {Raise} {Focus} {StartResizing NearestCorner}
+OnWindow         Mod4 Mouse2 :MacroCmd {Raise} {Focus} {StartTabbing}
+OnWindow         Mod4 Mouse3 :MacroCmd {Raise} {Focus} {WindowMenu}
 
 ### move window
 OnTitlebar Mouse1 :MacroCmd {Raise} {Focus} {ActivateTab}
