@@ -46,4 +46,3 @@ set include=^\\s*#\\s*include\ \\(<SDL2/\\)\\@!
 
 " clipboard
 set clipboard=unnamedplus
-

@@ -1,184 +1,169 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
+REPO_PATH="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
+
+# Helper functions are in another file because there's a lot of them.
+# shellcheck disable=SC1091
+source "$REPO_PATH/helpers.sh"
+
 function main {
-  local config_functions interactive config_function
-  config_functions=("$@")
-  interactive=false
-  if [[ -z "${config_functions[*]}" ]]; then
-    mapfile -t config_functions < <(get_config_functions)
-    interactive=true
-  fi
-  for config_function in "${config_functions[@]}"; do
-    if [[ "$interactive" == 'false' ]] \
-        || confirm_config "$config_function"; then
-      "config_$config_function"
-    fi
+  local tool
+  fail_if_running_as_root
+  trap cleanup EXIT
+  echo 'Creating temporary directory...'
+  TEMP_DIR="$(mktemp --directory)"
+  cd "$REPO_PATH" || exit
+  for tool in $(get_configure_functions); do
+    print_header "${tool^}"
+    "configure_$tool"
   done
 }
 
-# Configs
-
-function config_bash {
-  if is_root; then
-    echo_err 'Root bash config not supported!'
-    return 1
+function cleanup {
+  local exit_code=$?
+  print_header 'Cleanup'
+  echo 'Deleting temporary directory...'
+  rm -rf "$TEMP_DIR"
+  if [[ "$exit_code" -eq 0 ]]; then
+    print_header 'Done!'
   else
-    install --mode=644 bash/bashrc ~/.bashrc
-    install --mode=755 bash/bootstrap.sh ~/.bootstrap.sh
+    print_header 'Failed'
   fi
 }
 
-function config_code {
-  if is_root; then
-    echo_err 'Root code config not supported!'
-    return 1
-  else
-    install --mode=644 -D code/settings.json ~/.config/Code\ -\ OSS/User/settings.json
-    cat code/extensions | xargs --max-lines=1 code --install-extension
-  fi
+# Tools
+
+function configure_bash {
+  install_with_prompt --mode=644 bash/bashrc ~/.bashrc
 }
 
-function config_fluxbox {
-  local apps app exp
-  if is_root; then
-    echo_err 'Root fluxbox config not supported!'
-    return 1
+function configure_code {
+  local command config_dir
+  if [[ -d "$HOME/.config/VSCodium" ]]; then
+    command='codium'
+    config_dir="$HOME/.config/VSCodium"
+  elif [[ -d "$HOME/.config/Code - OSS" ]]; then
+    command='code'
+    config_dir="$HOME/.config/Code - OSS"
   else
-    cp --recursive fluxbox/fluxbox/* ~/.fluxbox/
-    install --mode=644 fluxbox/user-dirs.dirs ~/.config/user-dirs.dirs
-    install --mode=644 fluxbox/xinitrc ~/.xinitrc
-    install --mode=644 fluxbox/Xdefaults ~/.Xdefaults
-    install --mode=644 fluxbox/Xresources ~/.Xresources
-    mapfile -t apps < <(\
-      grep '# autoexec' ~/.fluxbox/menu \
-      | sed --regexp-extended --expression='s/.*\{([A-Za-z0-9_-]*).*/\1/g' \
-    )
-    for app in "${apps[@]}"; do
-      if command -v "$app" > /dev/null; then
-        exp="s/#\sautoexec\s*(.*\{$app.*)/\1/g"
-        sed --in-place --regexp-extended --expression="$exp" ~/.fluxbox/menu
-      fi
-    done
+    error "Unable to determine code config directory."
   fi
-}
 
-function config_git {
-  if is_root; then
-    echo_err 'Root git config not supported!'
-    return 1
+  install_with_prompt --mode=644 -D code/settings.json "$config_dir/User/settings.json"
+
+  mapfile -t missing_extensions < <(
+    comm -23 <(sort code/extensions) \
+         <("$command" --list-extensions | sort)
+  )
+  if [[ "${#missing_extensions[@]}" -eq 0 ]]; then
+    printf 'Extension list up to date.\n'
   else
-    install --mode=644 gitconfig ~/.gitconfig
-    if ! command -v gpg2; then
-      sed --in-place 's/gpg2/gpg/g' ~/.gitconfig
+    echo "Missing Code extensions:"
+    printf '%s\n' "${missing_extensions[@]}"
+    if confirm 'Install missing Code extensions?'; then
+      printf '%s\n' "${missing_extensions[@]}" \
+      | xargs --max-lines=1 "$command" --install-extension
+    else
+      echo "Skipping."
     fi
   fi
 }
 
-function config_nano {
-  if is_root; then
-    install --mode=644 nanorc /etc/nanorc
-    install --mode=644 -D nanorc /etc/nano/nanorc
-  else
-    install --mode=644 nanorc ~/.nanorc
+function configure_fluxbox {
+  local regex apps
+  if [[ ! -d "$HOME/.fluxbox" ]]; then
+    echo 'No fluxbox directory, skipping.'
+    return 0
+  fi
+
+  # Render fluxbox menu with machine-specific tools installed
+
+  # Figure out what apps exist on the system.
+  regex="^(\s*)#\s*autoexec\s*(.*\{(.*?)\})\s*$"
+  mapfile -t apps < <(
+    grep '# autoexec' fluxbox/fluxbox/menu \
+    | sed --regexp-extended "s/$regex/\3/g" \
+    | grep_if_command
+  )
+
+  # Uncomment 'autoexec' lines of commands that exist, then remove the rest.
+  regex="^(\s*)#\s*autoexec\s*(.*\{($(join '|' "${apps[@]}"))\})\s*$"
+  sed --regexp-extended "s/$regex/\1\2/g" fluxbox/fluxbox/menu \
+  | grep --invert-match '#\s*autoexec' \
+  > "$TEMP_DIR/menu"
+
+  # Copy files
+  install_with_prompt --mode=644 fluxbox/fluxbox/styles/black ~/.fluxbox/styles/black
+  install_with_prompt --mode=644 fluxbox/fluxbox/apps ~/.fluxbox/apps
+  install_with_prompt --mode=644 fluxbox/fluxbox/groups ~/.fluxbox/groups
+  install_with_prompt --mode=644 fluxbox/fluxbox/init ~/.fluxbox/init
+  install_with_prompt --mode=644 fluxbox/fluxbox/keys ~/.fluxbox/keys
+  install_with_prompt --mode=644 "$TEMP_DIR/menu" ~/.fluxbox/menu
+  install_with_prompt --mode=644 fluxbox/fluxbox/slitlist ~/.fluxbox/slitlist
+  install_with_prompt --mode=644 fluxbox/fluxbox/startup ~/.fluxbox/startup
+  install_with_prompt --mode=644 fluxbox/user-dirs.dirs ~/.config/user-dirs.dirs
+  install_with_prompt --mode=644 fluxbox/xinitrc ~/.xinitrc
+  install_with_prompt --mode=644 fluxbox/Xdefaults ~/.Xdefaults
+  install_with_prompt --mode=644 fluxbox/Xresources ~/.Xresources
+}
+
+function configure_git {
+  local email signingkey
+
+  # Email
+  if ! email="$(git config --global user.email)"; then
+    printf 'Enter git email: '
+    read -re email
+  fi
+
+  # Signing key
+  if ! signingkey="$(git config --global user.signingkey)"; then
+    printf 'Enter git signing key fingerprint: '
+    read -re signingkey
+  fi
+
+  # Fill in email and signing key in the file
+  sed "s/# populate email/$email/g
+    s/# populate signingkey/$signingkey/g" gitconfig > "$TEMP_DIR/gitconfig"
+  install_with_prompt --mode=644 "$TEMP_DIR/gitconfig" ~/.gitconfig
+}
+
+function configure_nano {
+  if [[ -f /etc/nanorc ]]; then
+    install_with_prompt --sudo --mode=644 nanorc /etc/nanorc
+  fi
+  if [[ -f /etc/nano/nanorc ]]; then
+    install_with_prompt --sudo --mode=644 nanorc /etc/nano/nanorc
+  fi
+  if [[ -f ~/.nanorc ]]; then
+    install_with_prompt --mode=644 nanorc ~/.nanorc
   fi
 }
 
-function config_scripts {
-  if is_root; then
-    install --mode=755 --owner=root --group=root scripts/* /usr/local/bin/
-  else
-    echo_err 'Non-root scripts config not supported!'
-    return 1
-  fi
-}
-
-function config_ssh {
-  if is_root; then
-    echo_err 'Root ssh config not supported!'
-    return 1
-  else
-    install --mode=600 -D sshconfig ~/.ssh/config
-  fi
-}
-
-function config_vim {
-  if is_root; then
-    install --mode=644 --owner=root --group=root vimrc /etc/vimrc
-    install --mode=644 --owner=root --group=root -D vimrc /etc/vim/vimrc
-  else
-    install --mode=644 vimrc ~/.vimrc
-  fi
-}
-
-# Helpers
-
-function get_config_functions {
-  declare -F \
-    | grep --only-matching --perl-regexp '(?<=\s)config_\w*$' \
-    | sed 's/config_//g' \
-    | sort --ignore-case
-}
-
-function choose_target {
-  local type targets target
-  type="$1"
-  targets=("${@:2}")
-  for target in "${targets[@]}"; do
-    if [[ "$type" == 'file' ]] && [[ -f "$target" ]] || \
-        [[ "$type" == 'directory' ]] && [[ -d "$target" ]]; then
-      echo "$target"
-      return 0
-    fi
+function configure_scripts {
+  local source destination
+  for source in scripts/*; do
+    destination="/usr/local/bin/$(basename "$source")"
+    install_with_prompt --sudo --mode=755 --owner=root --group=root \
+      "$source" "$destination"
   done
-  echo "${targets[0]}"
 }
 
-function confirm_config {
-  confirm "Configure $1"
+function configure_ssh {
+  install_with_prompt --mode=600 -D sshconfig ~/.ssh/config
 }
 
-function confirm {
-  local message answer input
-  message="$1"
-  if [ "$message" != "" ]; then
-    message="$message "
+function configure_vim {
+  if [[ -f /etc/vimrc ]]; then
+    install_with_prompt --sudo --mode=644 --owner=root --group=root vimrc /etc/vimrc
   fi
-  answer=-1
-  while [[ "$answer" -eq -1 ]]; do
-    echo_tty -n "$message(y/n) "
-    read -r input
-    if is_yes "$input"; then
-      answer=0
-    elif is_no "$input"; then
-      answer=1
-    fi
-  done
-  return "$answer"
+  if [[ -f /etc/vim/vimrc ]]; then
+    install_with_prompt --sudo --mode=644 --owner=root --group=root -D vimrc /etc/vim/vimrc
+  fi
+  if [[ -f ~/.vimrc ]]; then
+    install_with_prompt --mode=644 vimrc ~/.vimrc
+  fi
 }
 
-function is_yes {
-  [[ "${1,,}" =~ ^y(es)?$ ]]
-}
-
-function is_no {
-  [[ "${1,,}" =~ ^no?$ ]]
-}
-
-function is_root {
-  [[ "$UID" -eq 0 ]]
-}
-
-function echo_tty {
-  echo "$@" > /dev/tty
-}
-
-function echo_err {
-  >&2 echo "$@"
-}
-
-# cd to directory containing this script
-cd "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
-
-main "$@"
+main

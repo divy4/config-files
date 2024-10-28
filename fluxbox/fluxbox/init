@@ -87,8 +87,8 @@ session.screen0.toolbar.tools:                      prevworkspace, workspacename
 session.screen0.toolbar.visible:                    false
 session.screen0.toolbar.widthPercent:               100
 session.screen0.tooltipDelay:                       500
-session.screen0.window.focus.alpha:                 190
-session.screen0.window.unfocus.alpha:               170
+session.screen0.window.focus.alpha:                 210
+session.screen0.window.unfocus.alpha:               190
 session.screen0.windowMenu:                         ~/.fluxbox/windowmenu
 session.screen0.windowPlacement:                    RowMinOverlapPlacement
 session.screen0.workspaceNames:                     0,1,2,3,4,5,6,7,8,9

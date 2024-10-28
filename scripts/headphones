@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MAC='F8:4E:17:95:2F:A0'
+MAC='88:C9:E8:58:F5:55'
 
 if [[ ! "${1:-}" =~ ^(connect|disconnect)$ ]]; then
   echo "Error: argument '${1:-}' can only be either 'connect' or 'disconnect'."

@@ -1,4 +1,3 @@
-# Find window info with xprop
 [app] (name=fbrun)
   [Position]	(CENTER)	{0 0}
   [Layer]	{2}
@@ -6,15 +5,19 @@
 [app] (class=Gimp)
   [Alpha]	{255}
 [end]
-[app] (name=xclock) (class=XClock)
-  [Position]	(TOP)	{0% 0%}
-  [Sticky]	{yes}
-  [Layer]	{9}
-  [Alpha]	{255}
+[app] (name=Toolkit) (class=firefox) (role=PictureInPicture)
+  [Close]	{yes}
+  [Alpha]	{245 235}
 [end]
 [app] (name=VirtualBoxVM) (class=VirtualBoxVM)
   [Alpha]	{255}
 [end]
 [app] (name=VirtualBox Machine)
+  [Alpha]	{255}
+[end]
+[app] (name=xclock) (class=XClock)
+  [Position]	(TOP)	{0% 0%}
+  [Sticky]	{yes}
+  [Layer]	{9}
   [Alpha]	{255}
 [end]

@@ -18,6 +18,7 @@
   [encoding] {UTF-8}
   # autoexec [exec] (Blender) {blender}
   # autoexec [exec] (Code) {code}
+  # autoexec [exec] (VSCodium) {vscodium}
   # autoexec [exec] (Discord) {discord}
   # autoexec [exec] (Dolphin) {dolphin}
   # autoexec [exec] (Gimp) {gimp}
@@ -39,6 +40,7 @@
     [exec] (Mate system monitor) {mate-system-monitor}
     [exec] (Nvidia-settings) {nvidia-settings}
     [exec] (Nvidia-smi) {xterm watch -n 1 nvidia-smi}
+    [exec] (razergenie) {razergenie}
     [exec] (Sensors) {xterm watch -n 1 sensors}
   [end]
 
