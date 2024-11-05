@@ -3,7 +3,7 @@ Host *
   ServerAliveCountMax 2
 
 Host github.com
-  IdentityFile ~/.ssh/git
+  IdentityFile ~/.ssh/github
   User git
 
 Host localhost

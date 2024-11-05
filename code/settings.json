@@ -1,5 +1,4 @@
 {
-  "ConEmu.path": "C:\\Program Files\\ConEmu\\ConEmu64.exe",
   "cSpell.userWords": [
     "ansible",
     "Kubernetes",
@@ -31,11 +30,12 @@
   "editor.tabSize": 2,
   "extensions.ignoreRecommendations": false,
   "files.associations": {
-    "**/ansible/**/*.yml": "ansible",
-    "**/Dockerfile*": "dockerfile"
+    "**/Dockerfile*": "dockerfile",
+    "**/ansible/**/*.yml": "ansible"
   },
   "files.eol": "\n",
   "files.insertFinalNewline": true,
+  "redhat.telemetry.enabled": false,
   "terminal.integrated.shell.windows": "C:\\Program Files\\Git\\bin\\bash.exe",
   "vscode-yaml-sort.lineWidth": 80,
   "vscode-yaml-sort.noArrayIndent": true,

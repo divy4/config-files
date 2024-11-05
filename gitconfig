@@ -3,11 +3,11 @@
   email = # populate email
   signingkey = # populate signingkey
 [core]
-  editor = code --wait
+  editor = codium --wait
   encoding = utf-8
   pager = less -X
 [gpg]
-  program = gpg2
+  program = gpg
 [alias]
   lg = log -20 --pretty=format:'%Cred%h%Creset - %s %Cgreen(%cr %an)%Creset%C(yellow)%d%Creset' --abbrev-commit --date=relative
   lgr = log --graph --decorate --pretty=oneline --abbrev-commit

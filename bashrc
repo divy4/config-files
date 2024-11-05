@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 export PATH="$PATH:/home/dan/.local/bin"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/cuda/targets/x86_64-linux/lib"
+export XDG_MENU_PREFIX=arch-
 
 # fix gpg
 export GPG_TTY=$(tty)
@@ -99,12 +101,3 @@ case "$(uname -s)" in
     echo "Unrecognized OS: $(uname -s)"
     ;;
 esac
-
-# First time setup
-if [[ -f ~/.bootstrap.sh ]]; then
-  if ~/.bootstrap.sh; then
-    rm ~/.bootstrap.sh
-  else
-    echo 'Failed to bootstrap configs'
-  fi
-fi
