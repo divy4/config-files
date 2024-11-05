@@ -35,7 +35,7 @@ function cleanup {
 # Tools
 
 function configure_bash {
-  install_with_prompt --mode=644 bash/bashrc ~/.bashrc
+  install_with_prompt --mode=644 bashrc ~/.bashrc
 }
 
 function configure_code {
@@ -57,7 +57,7 @@ function configure_code {
          <("$command" --list-extensions | sort)
   )
   if [[ "${#missing_extensions[@]}" -eq 0 ]]; then
-    printf 'Extension list up to date.\n'
+    printf 'Code extensions are up to date.\n'
   else
     echo "Missing Code extensions:"
     printf '%s\n' "${missing_extensions[@]}"
@@ -108,25 +108,47 @@ function configure_fluxbox {
   install_with_prompt --mode=644 fluxbox/Xresources ~/.Xresources
 }
 
+GIT_GPG_KEY_EXPIRE='1y'
+
 function configure_git {
-  local email signingkey
+  local name email gpg_key_comment signingkey
+
+  # Name
+  if name="$(git config --global user.name)"; then
+    echo "user.name is $name"
+  else
+    printf 'Enter git name: '
+    read -re name
+  fi
 
   # Email
-  if ! email="$(git config --global user.email)"; then
+  if email="$(git config --global user.email)"; then
+    echo "user.email is $email"
+  else
     printf 'Enter git email: '
     read -re email
   fi
 
+  gpg_key_comment="$(get_machine_id)-git"
+
   # Signing key
-  if ! signingkey="$(git config --global user.signingkey)"; then
-    printf 'Enter git signing key fingerprint: '
-    read -re signingkey
+  if signingkey="$(git config --global user.signingkey)"; then
+    echo "user.signingkey is $signingkey (already set)"
+  elif signingkey="$(get_gpg_key_fingerprint "$name" "$gpg_key_comment" "$email")"; then
+    echo "user.signingkey is $signingkey (detected via gpg)"
+  else
+    echo "Unable to detect git signing key."
+    signingkey="$(generate_gpg_key "$name" "$gpg_key_comment" "$email" "$GIT_GPG_KEY_EXPIRE")"    
+    echo "user.signingkey is $signingkey (generated)"
   fi
 
   # Fill in email and signing key in the file
   sed "s/# populate email/$email/g
     s/# populate signingkey/$signingkey/g" gitconfig > "$TEMP_DIR/gitconfig"
   install_with_prompt --mode=644 "$TEMP_DIR/gitconfig" ~/.gitconfig
+
+  # Generate ssh key for github
+  generate_ssh_key "$(hostname)-github" ~/.ssh/github
 }
 
 function configure_nano {
@@ -141,6 +163,12 @@ function configure_nano {
   fi
 }
 
+function configure_password {
+  if user_has_bad_password "$(whoami)"; then
+    passwd
+  fi
+}
+
 function configure_scripts {
   local source destination
   for source in scripts/*; do
@@ -152,6 +180,8 @@ function configure_scripts {
 
 function configure_ssh {
   install_with_prompt --mode=600 -D sshconfig ~/.ssh/config
+  generate_ssh_key localhost ~/.ssh/localhost
+  append_line_with_prompt "$(cat ~/.ssh/localhost.pub)" ~/.ssh/authorized_keys
 }
 
 function configure_vim {

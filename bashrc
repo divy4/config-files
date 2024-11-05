@@ -101,12 +101,3 @@ case "$(uname -s)" in
     echo "Unrecognized OS: $(uname -s)"
     ;;
 esac
-
-# First time setup
-if [[ -f ~/.bootstrap.sh ]]; then
-  if ~/.bootstrap.sh; then
-    rm ~/.bootstrap.sh
-  else
-    echo 'Failed to bootstrap configs'
-  fi
-fi
