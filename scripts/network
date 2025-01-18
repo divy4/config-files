@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+INTERFACE="eno2"
+
+if [[ ! "${1:-}" =~ ^(up|down)$ ]]; then
+  echo "Error: argument '${1:-}' can only be either 'up' or 'down'."
+  exit 1
+fi
+
+sudo networkctl "$1" "$INTERFACE"
+echo "Set $INTERFACE $1"
