@@ -40,6 +40,7 @@
     [exec] (Mate system monitor) {mate-system-monitor}
     [exec] (Nvidia-settings) {nvidia-settings}
     [exec] (Nvidia-smi) {xterm watch -n 1 nvidia-smi}
+    [exec] (qt6ct - qt style configurator) {qt6ct}
     [exec] (razergenie) {razergenie}
     [exec] (Sensors) {xterm watch -n 1 sensors}
   [end]

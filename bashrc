@@ -20,6 +20,9 @@ fi
 export VISUAL='nano'
 export EDITOR='nano'
 
+# Set qt configuration tool
+export QT_QPA_PLATFORMTHEME='qt6ct'
+
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
