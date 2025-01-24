@@ -82,30 +82,26 @@ function configure_fluxbox {
   # Figure out what apps exist on the system.
   regex="^(\s*)#\s*autoexec\s*(.*\{(.*?)\})\s*$"
   mapfile -t apps < <(
-    grep '# autoexec' fluxbox/fluxbox/menu \
+    grep '# autoexec' fluxbox/menu \
     | sed --regexp-extended "s/$regex/\3/g" \
     | grep_if_command
   )
 
   # Uncomment 'autoexec' lines of commands that exist, then remove the rest.
   regex="^(\s*)#\s*autoexec\s*(.*\{($(join '|' "${apps[@]}"))\})\s*$"
-  sed --regexp-extended "s/$regex/\1\2/g" fluxbox/fluxbox/menu \
+  sed --regexp-extended "s/$regex/\1\2/g" fluxbox/menu \
   | grep --invert-match '#\s*autoexec' \
   > "$TEMP_DIR/menu"
 
   # Copy files
-  install_with_prompt --mode=644 fluxbox/fluxbox/styles/black ~/.fluxbox/styles/black
-  install_with_prompt --mode=644 fluxbox/fluxbox/apps ~/.fluxbox/apps
-  install_with_prompt --mode=644 fluxbox/fluxbox/groups ~/.fluxbox/groups
-  install_with_prompt --mode=644 fluxbox/fluxbox/init ~/.fluxbox/init
-  install_with_prompt --mode=644 fluxbox/fluxbox/keys ~/.fluxbox/keys
+  install_with_prompt --mode=644 fluxbox/styles/black ~/.fluxbox/styles/black
+  install_with_prompt --mode=644 fluxbox/apps ~/.fluxbox/apps
+  install_with_prompt --mode=644 fluxbox/groups ~/.fluxbox/groups
+  install_with_prompt --mode=644 fluxbox/init ~/.fluxbox/init
+  install_with_prompt --mode=644 fluxbox/keys ~/.fluxbox/keys
   install_with_prompt --mode=644 "$TEMP_DIR/menu" ~/.fluxbox/menu
-  install_with_prompt --mode=644 fluxbox/fluxbox/slitlist ~/.fluxbox/slitlist
-  install_with_prompt --mode=644 fluxbox/fluxbox/startup ~/.fluxbox/startup
-  install_with_prompt --mode=644 fluxbox/user-dirs.dirs ~/.config/user-dirs.dirs
-  install_with_prompt --mode=644 fluxbox/xinitrc ~/.xinitrc
-  install_with_prompt --mode=644 fluxbox/Xdefaults ~/.Xdefaults
-  install_with_prompt --mode=644 fluxbox/Xresources ~/.Xresources
+  install_with_prompt --mode=644 fluxbox/slitlist ~/.fluxbox/slitlist
+  install_with_prompt --mode=644 fluxbox/startup ~/.fluxbox/startup
 }
 
 GIT_GPG_KEY_EXPIRE='1y'
@@ -151,6 +147,15 @@ function configure_git {
   generate_ssh_key "$(hostname)-github" ~/.ssh/github
 }
 
+function configure_i3 {
+  if [[ ! -d "$HOME/.config/i3" ]]; then
+    echo 'No i3 directory, skipping.'
+    return 0
+  fi
+  install_with_prompt --mode=644 i3/config ~/.config/i3/config
+  install_with_prompt --mode=644 i3/i3status-rs-config.toml ~/.config/i3/i3status-rs-config.toml
+}
+
 function configure_nano {
   if [[ -f /etc/nanorc ]]; then
     install_with_prompt --sudo --mode=644 nanorc /etc/nanorc
@@ -194,6 +199,19 @@ function configure_vim {
   if [[ -f ~/.vimrc ]]; then
     install_with_prompt --mode=644 vimrc ~/.vimrc
   fi
+}
+
+function configure_x {
+  local sources source dest
+  install_with_prompt --mode=644 x/user-dirs.dirs ~/.config/user-dirs.dirs
+  install_with_prompt --mode=644 x/Xdefaults ~/.Xdefaults
+  install_with_prompt --mode=644 x/xinitrc ~/.xinitrc
+  install_with_prompt --mode=644 x/Xresources ~/.Xresources
+  mapfile -t sources < <(find "x/polkit/" -type f)
+  for source in "${sources[@]}"; do
+    dest="/etc/polkit-1/rules.d/$(basename "$source")"
+    install_with_prompt --sudo --mode=750 --owner=root --group=polkitd "$source" "$dest"
+  done
 }
 
 main
