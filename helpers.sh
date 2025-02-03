@@ -13,7 +13,7 @@ function get_configure_functions {
 # making changes. Includes an additional flag, --sudo, which runs command as
 # root.
 function install_with_prompt {
-  local sudo_enabled arguments argument source target
+  local sudo_enabled arguments argument source target command
   if [[ "$#" -lt 2 ]]; then
     error "install_with_prompt requires at least 2 arguments"
   fi
@@ -42,6 +42,20 @@ function install_with_prompt {
     esac
   done
 
+  # Escalate if --sudo was passed
+  if [[ "$sudo_enabled" == 'true' ]]; then
+    # Generate bash script that executes this function
+    command="source ${BASH_SOURCE[0]}; install_with_prompt"
+    for argument in "${arguments[@]}"; do
+      # Escape arguments with single quotes
+      command+=" '$argument'"
+    done
+    # Execute command as sudo
+    sudo bash -c "$command"
+    return
+  fi
+
+  # Throw error if the source doesn't exist
   if [[ ! -a "$source" ]]; then
     error "Source $source does not exist."
   fi
@@ -56,12 +70,8 @@ function install_with_prompt {
     return
   fi
 
-  # Run install command as root or as current user
-  if [[ "$sudo_enabled" == 'true' ]]; then
-    sudo install "${arguments[@]}"
-  else
-    install "${arguments[@]}"
-  fi
+  # Run install command
+  install "${arguments[@]}"
 }
 
 # Given a string and a file, append the string to the file if it isn't already
