@@ -1,16 +1,19 @@
 {
   "cSpell.userWords": [
     "ansible",
+    "BUILDKIT",
     "Kubernetes",
     "lineinfile",
     "nonrotational",
     "proto",
     "remmina",
     "sata",
+    "SAVEHIST",
     "sshd",
     "vboxmanage",
     "virtualbox",
-    "vram"
+    "vram",
+    "zkbd"
   ],
   "editor.renderControlCharacters": false,
   "editor.renderWhitespace": "all",

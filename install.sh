@@ -34,10 +34,6 @@ function cleanup {
 
 # Tools
 
-function configure_bash {
-  install_with_prompt --mode=644 bashrc ~/.bashrc
-}
-
 function configure_code {
   local command config_dir
   if [[ -d "$HOME/.config/VSCodium" ]]; then
@@ -181,6 +177,12 @@ function configure_scripts {
     install_with_prompt --sudo --mode=755 --owner=root --group=root \
       "$source" "$destination"
   done
+}
+
+function configure_shells {
+  install_with_prompt --mode=644 shells/profile ~/.profile
+  install_with_prompt --mode=644 shells/bashrc ~/.bashrc
+  install_with_prompt --mode=644 shells/zshrc ~/.zshrc
 }
 
 function configure_ssh {
