@@ -103,9 +103,9 @@ bindsym $mod+Shift+r restart
 # Window actions
 
 # Change window focus
-bindsym $mod+j focus left
-bindsym $mod+k focus down
 bindsym $mod+i focus up
+bindsym $mod+k focus down
+bindsym $mod+j focus left
 bindsym $mod+l focus right
 
 # kill focused window
@@ -115,9 +115,9 @@ bindsym $mod+q kill
 bindsym $mod+g fullscreen toggle
 
 # Resize active window
-bindsym $mod+Shift+j resize shrink width 10 px or 3 ppt
-bindsym $mod+Shift+k resize grow height 10 px or 3 ppt
 bindsym $mod+Shift+i resize shrink height 10 px or 3 ppt
+bindsym $mod+Shift+k resize grow height 10 px or 3 ppt
+bindsym $mod+Shift+j resize shrink width 10 px or 3 ppt
 bindsym $mod+Shift+l resize grow width 10 px or 3 ppt
 
 
@@ -125,10 +125,16 @@ bindsym $mod+Shift+l resize grow width 10 px or 3 ppt
 # Layout actions
 
 # Move active window (alt)
-bindsym $mod+Mod1+j move left
-bindsym $mod+Mod1+k move down
 bindsym $mod+Mod1+i move up
+bindsym $mod+Mod1+k move down
+bindsym $mod+Mod1+j move left
 bindsym $mod+Mod1+l move right
+
+# Move active window (arrow keys)
+bindsym $mod+Up    move up
+bindsym $mod+Down  move down
+bindsym $mod+Left  move left
+bindsym $mod+Right move right
 
 # focus the parent container
 bindsym $mod+a focus parent
