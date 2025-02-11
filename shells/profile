@@ -1,0 +1,289 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1090,SC2034,SC2128,SC2154,SC3046
+
+# Determine the shell executing this
+if test -n "$ZSH_VERSION"; then
+  PROFILE_SHELL='zsh'
+elif test -n "$BASH_VERSION"; then
+  PROFILE_SHELL='bash'
+else
+  PROFILE_SHELL='sh'
+fi
+
+
+
+##### Environment variables #####
+
+# Fix konsole TERM value
+if [ -n "$KONSOLE_VERSION" ]; then
+  export TERM='konsole'
+fi
+
+export PATH="$PATH:/home/dan/.local/bin"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/cuda/targets/x86_64-linux/lib"
+export XDG_MENU_PREFIX=arch-
+
+# fix gpg
+export GPG_TTY="$(tty)"
+if [ -n "$SSH_CONNECTION" ]; then
+  export PINENTRY_USER_DATA="USE_CURSES=1"
+fi
+
+# enable docker buildkit
+export DOCKER_BUILDKIT=1
+
+# Set nano as default editor for noninteractive sessions
+export VISUAL='nano'
+export EDITOR='nano'
+
+
+
+# ...and set VS Code as default editor for interactive sessions
+export VISUAL='code --wait'
+export EDITOR='code --wait'
+
+# Set qt configuration tool
+export QT_QPA_PLATFORMTHEME='qt6ct'
+
+# Packer directories
+case "$(uname -s)" in
+  Linux*)
+    export PACKER_CACHE_DIR='/tmp/packer'
+    export PACKER_VM_DIR='/var/vms'
+    ;;
+  CYGWIN*|MINGW*)
+    export PACKER_CACHE_DIR='/c/packer'
+    export PACKER_VM_DIR='/w/packer_vms'
+    ;;
+  *)
+    echo "Unrecognized OS: $(uname -s)"
+    ;;
+esac
+
+
+
+# If not running interactively, stop here.
+case "$-" in
+  *i*);;
+  *)
+    echo hello;;
+esac
+
+
+
+##### History #####
+case "$PROFILE_SHELL" in
+zsh)
+  HISTFILE=~/.zsh_history
+  HISTSIZE=10000
+  SAVEHIST=10000;;
+bash)
+  ;;
+sh)
+  ;;
+esac
+
+
+
+##### Shell options #####
+
+case "$PROFILE_SHELL" in
+zsh)
+  # autocd       > cd to directory if command is a directory
+  # extendedglob > use extended glob matching patterns
+  # nomatch      > throw error if pattern didn't match any files
+  # notify       > print background process status when the process exits
+  # beep         > beep on error
+  setopt autocd extendedglob nomatch notify
+  unsetopt beep
+  ;;
+bash)
+  ;;
+sh)
+  ;;
+esac
+
+
+
+##### Key bindings #####
+
+case "$PROFILE_SHELL" in
+zsh)
+  # Generate a zkbd file, if it doesn't already exist
+  # shellcheck disable=SC2299,SC3028,SC3057
+  zkbd_file="$HOME/.zkbd/$TERM-${${DISPLAY:t}:-$VENDOR-$OSTYPE}"
+  if [ ! -f "$zkbd_file" ]; then
+    echo "Special key mapping file ($zkbd_file) not found, generating a new one..."
+    # Immediately load function definition via +X
+    autoload -Uz +X zkbd
+    # Edit zkbd to include extra key bindings
+    extra_keys=(
+      ControlBackspace ControlDelete
+      ControlLeft ControlRight ControlUp ControlDown
+    )
+    # ...and reorder the arrow keys because I use weird keyboards
+    eval "$(
+      declare -f zkbd \
+      | sed "s/Up Left Down Right/Left Right Up Down/g" \
+      | sed "s/\(pckeys.*\))/\1 $extra_keys)/g"
+    )"
+    zkbd
+  fi
+  source "$zkbd_file"
+
+  # Use emac-style key bindings as the base
+  bindkey -e
+
+  # Additional bindings
+
+  # Bind a key to an action, but only if it's key value doesn't match additional
+  # listed keys. This is a fix for some terminals not making a difference
+  # between pressing special characters, like backspace, vs pressing the same
+  # key with modifiers.
+  function bindkey_if_unique() {
+    input_key="$1"
+    action="$2"
+    other_keys=("${@:3}")
+
+    # Exit early if other key matches one of the other keys
+    for other_key in "${other_keys[@]}"; do
+      if [[ "${key[$input_key]}" == "${key[$other_key]}" ]]; then
+        return 1
+      fi
+    done
+
+    # Finally, bind the key
+    bindkey "${key[$input_key]}" "$action"
+  }
+
+  # Deleting
+  bindkey_if_unique Delete            delete-char
+  bindkey_if_unique ControlDelete     delete-word           Delete
+  bindkey_if_unique ControlBackspace  backward-delete-word  Backspace
+
+  # Navigation
+  bindkey_if_unique ControlLeft   backward-word     Left
+  bindkey_if_unique ControlRight  forward-word      Right
+  bindkey_if_unique Left          backward-char
+  bindkey_if_unique Right         forward-char
+  bindkey_if_unique Home          beginning-of-line
+  bindkey_if_unique End           end-of-line
+
+  # Cleanup
+  unset -f bindkey_if_unique
+  unset extra_keys zkbd_file
+  ;;
+bash)
+  ;;
+sh)
+  ;;
+esac
+
+
+
+
+##### Auto complete #####
+
+case "$PROFILE_SHELL" in
+zsh)
+  # End of lines configured by zsh-newuser-install
+  # The following lines were added by compinstall
+  zstyle :compinstall filename '/home/dan/.zshrc'
+
+  # Load autocompletions
+  autoload -Uz compinit && compinit
+  ;;
+bash)
+  ;;
+sh)
+  ;;
+esac
+
+
+
+##### Prompt ####
+
+case "$PROFILE_SHELL" in
+zsh)
+  # Load extended prompt info
+  autoload -Uz vcs_info
+  zstyle ':vcs_info:*' enable git
+  precmd() {
+    vcs_info
+  }
+  setopt prompt_subst
+
+  # Prompt formatting for git repos
+  zstyle ':vcs_info:git:*' formats       '%b '
+  zstyle ':vcs_info:git:*' actionformats '%b %F{magenta}%a '
+
+  # Shell prompt
+  # shellcheck disable=SC2016
+  PROMPT='%F{red}%n %F{yellow}%T %F{green}%~ %F{cyan}${vcs_info_msg_0_}%f$ '
+  ;;
+bash)
+  PS1='\[\033[32m\]\u@\h \[\033[33m\]\W\[\033[0m\] \$ '
+  ;;
+sh)
+  ;;
+esac
+
+
+
+##### Aliases #####
+
+# clipboard
+alias clipboard='xclip -selection clipboard'
+alias primary='xclip -selection primary'
+alias secondary='xclip -selection secondary'
+
+# compressing/decompressing
+alias   compresstar='tar -cf'
+alias decompresstar='tar -xf'
+alias   compressgz='tar -czf'
+alias decompressgz='tar -xzf'
+
+# git
+alias ga='git add'
+alias gaa='git add -A'
+alias gaacapfwl='git add -A; git commit --amend --no-edit; git push --force-with-lease'
+alias gb='git branch'
+alias gc='git commit -m'
+alias gupstream='git set-upstream'
+alias gca='git commit --amend --no-edit'
+alias gd='git diff'
+alias gf='git fetch --all'
+alias gl='git lg'
+alias gmv='git mv'
+alias gpull='git pull'
+alias gpush='git push'
+alias gpushfwl='git push --force-with-lease'
+alias grb='git rebase'
+alias grbc='git rebase --continue'
+alias grbi='git rebase --interactive'
+alias grbmain='git fetch origin; git rebase origin/main; git push --force-with-lease'
+alias grbmaster='git fetch origin; git rebase origin/master; git push --force-with-lease'
+alias grm='git rm'
+alias gs='git status'
+
+# misc
+alias cl='clear;'
+alias cl2='clear;clear;'
+alias cls='clear;ls'
+alias df='df -h'
+alias du='du -cah --apparent-size'
+alias gdiff='git diff --no-index'
+alias k='kubectl'
+alias l='ls'
+alias ls='ls --color=auto'
+alias la='ls -a'
+alias ll='ls -l'
+alias lla='ls -la'
+alias l1='ls -1'
+alias vim='vim -o' #always open multiple files in split mode
+
+# tools
+if command -v codium >/dev/null \
+&& ! command -v code >/dev/null; then
+  alias code='codium'
+fi
