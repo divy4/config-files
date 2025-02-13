@@ -292,6 +292,11 @@ function get_machine_id {
   fi
 }
 
+# Returns true if this is my work machine
+function is_work_machine {
+  [[ "$(whoami)" != 'dan' ]]
+}
+
 # Assuming every line is a command, only returns the lines that correspond to
 # commands on the system.
 function grep_if_command {

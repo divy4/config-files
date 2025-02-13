@@ -1,13 +1,40 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1090,SC2034,SC2128,SC2154,SC3046
 
+##### Figure out what's going on ######
+
 # Determine the shell executing this
-if test -n "$ZSH_VERSION"; then
-  PROFILE_SHELL='zsh'
-elif test -n "$BASH_VERSION"; then
-  PROFILE_SHELL='bash'
+PROFILE_SHELL="$(ps --pid "$$" -o comm | tail -1)"
+case "$PROFILE_SHELL" in
+zsh)
+  # Measure time from when profile was sourced (see prompt section below)
+  PROMPT_START_TIME="$(date +%s.%N)";;
+bash)
+  # Measure time from when profile was sourced (see prompt section below)
+  PROMPT_START_TIME="$(date +%s)";;
+sh)
+  ;;
+*)
+  echo "Error: Unknown shell '$PROFILE_SHELL'"
+  return;;
+esac
+
+# Determine what OS we're running
+case "$(uname -s)" in
+  Linux*)
+    PROFILE_OS_ID="$(grep -Po '(?<=^ID=).*' /etc/os-release)";;
+  CYGWIN*|MINGW*)
+    PROFILE_OS_ID='windows';;
+  *)
+    echo "Error: Unrecognized OS '$(uname -s)'"
+    return;;
+esac
+
+# Determine if we're in WSL
+if [ -n "$WSL_DISTRO_NAME" ]; then
+  PROFILE_IS_WSL='true'
 else
-  PROFILE_SHELL='sh'
+  PROFILE_IS_WSL='false'
 fi
 
 
@@ -36,37 +63,34 @@ export DOCKER_BUILDKIT=1
 export VISUAL='nano'
 export EDITOR='nano'
 
-
+# If not running interactively, stop here.
+case "$-" in
+  *i*)
+    ;;
+  *)
+    return;;
+esac
 
 # ...and set VS Code as default editor for interactive sessions
-export VISUAL='code --wait'
-export EDITOR='code --wait'
+if command -v codium >/dev/null; then
+  export VISUAL='codium --wait'
+  export EDITOR='codium --wait'
+elif command -v code >/dev/null; then
+  export VISUAL='code --wait'
+  export EDITOR='code --wait'
+fi
 
 # Set qt configuration tool
 export QT_QPA_PLATFORMTHEME='qt6ct'
 
 # Packer directories
-case "$(uname -s)" in
-  Linux*)
-    export PACKER_CACHE_DIR='/tmp/packer'
-    export PACKER_VM_DIR='/var/vms'
-    ;;
-  CYGWIN*|MINGW*)
+case "$PROFILE_OS_ID" in
+  windows)
     export PACKER_CACHE_DIR='/c/packer'
-    export PACKER_VM_DIR='/w/packer_vms'
-    ;;
+    export PACKER_VM_DIR='/w/packer_vms';;
   *)
-    echo "Unrecognized OS: $(uname -s)"
-    ;;
-esac
-
-
-
-# If not running interactively, stop here.
-case "$-" in
-  *i*);;
-  *)
-    echo hello;;
+    export PACKER_CACHE_DIR='/tmp/packer'
+    export PACKER_VM_DIR='/var/vms';;
 esac
 
 
@@ -207,22 +231,79 @@ case "$PROFILE_SHELL" in
 zsh)
   # Load extended prompt info
   autoload -Uz vcs_info
-  zstyle ':vcs_info:*' enable git
-  precmd() {
-    vcs_info
-  }
   setopt prompt_subst
 
   # Prompt formatting for git repos
+  zstyle ':vcs_info:*' enable git
   zstyle ':vcs_info:git:*' formats       '%b '
   zstyle ':vcs_info:git:*' actionformats '%b %F{magenta}%a '
 
+  # Explanation of PROMPT_START_TIME:
+  # Order of operations is a bit weird here, so here's a block of text to
+  # explain what's going on. The prompt includes a yellow time section, which
+  # displays the start time and execution time for 1 of 3 things:
+  #
+  # - If a command was just run, show the command start time and execution time.
+  # - If enter was pressed with no command, show the time the last prompt was
+  #   rendered and how long ago that was.
+  # - If the shell just started up, show when this file was sourced and how long
+  #   it took to be sourced.
+
+  function preexec {
+    # Measure time from start of command execution
+    PROMPT_START_TIME="$(date +%s.%N)"
+  }
+
+  function precmd {
+    # Measure time
+    local end_time
+    end_time="$(date +%s.%N)"
+    zsh_prompt_start_time="$(date -d "@$PROMPT_START_TIME" +%T)"
+    zsh_prompt_diff_time="$(printf '%.2fs' $((end_time - PROMPT_START_TIME)))"
+
+    # Measure time from previous prompt (i.e. enter pressed with no command)
+    PROMPT_START_TIME="$end_time"
+
+    # Set vcs_info_msg_0_
+    vcs_info
+  }
+
   # Shell prompt
   # shellcheck disable=SC2016
-  PROMPT='%F{red}%n %F{yellow}%T %F{green}%~ %F{cyan}${vcs_info_msg_0_}%f$ '
+  PROMPT='%F{red}${zsh_prompt_start_time} %F{yellow}${zsh_prompt_diff_time} %F{green}%~ %F{cyan}${vcs_info_msg_0_}%f%(?..[%?] )$ '
   ;;
 bash)
-  PS1='\[\033[32m\]\u@\h \[\033[33m\]\W\[\033[0m\] \$ '
+  # Using PROMPT_COMMAND to dynamically update the prompt
+  PROMPT_COMMAND='precmd'
+  function precmd {
+    local exit_code="$?"
+    local end_time start_time diff_time exit_status
+
+    # Time
+    end_time="$(date +%s)"
+    start_time="$(date -d "@$PROMPT_START_TIME" +%T)"
+    diff_time="$(printf '%is' $((end_time - PROMPT_START_TIME)))"
+
+    # Exit status
+    if [[ "$exit_code" -eq 0 ]]; then
+      exit_status=""
+    else
+      exit_status="[$exit_code] "
+    fi
+
+    local RED='\[\033[31m\]'
+    local YELLOW='\[\033[33m\]'
+    local GREEN='\[\033[32m\]'
+    local CYAN='\[\033[36m\]'
+    local PURPLE='\[\033[35m\]'
+    local WHITE='\[\033[37m\]'
+
+    # Update prompt (because bash doesn't resolve variables within the prompt)
+    PS1="${PURPLE}${start_time} ${CYAN}${diff_time} ${GREEN}\w $WHITE${exit_status}$ "
+
+    # Measure time from previous prompt (i.e. enter pressed with no command)
+    PROMPT_START_TIME="$end_time"
+  }
   ;;
 sh)
   ;;
@@ -233,9 +314,13 @@ esac
 ##### Aliases #####
 
 # clipboard
-alias clipboard='xclip -selection clipboard'
-alias primary='xclip -selection primary'
-alias secondary='xclip -selection secondary'
+if command -v clip.exe >/dev/null; then
+  alias clipboard='clip.exe'
+elif command -v xclip >/dev/null; then
+  alias clipboard='xclip -selection clipboard'
+  alias primary='xclip -selection primary'
+  alias secondary='xclip -selection secondary'
+fi
 
 # compressing/decompressing
 alias   compresstar='tar -cf'
@@ -273,6 +358,7 @@ alias cls='clear;ls'
 alias df='df -h'
 alias du='du -cah --apparent-size'
 alias gdiff='git diff --no-index'
+alias grep='grep --color=auto'
 alias k='kubectl'
 alias l='ls'
 alias ls='ls --color=auto'
@@ -283,7 +369,18 @@ alias l1='ls -1'
 alias vim='vim -o' #always open multiple files in split mode
 
 # tools
-if command -v codium >/dev/null \
-&& ! command -v code >/dev/null; then
+if command -v codium >/dev/null; then
   alias code='codium'
+fi
+
+
+
+##### Final steps #####
+
+# When in work WSL...
+if [[ "$PROFILE_IS_WSL" == 'true' ]] && [[ "$(whoami)" != 'dan' ]]; then
+  # Start in projects folder
+  cd "$HOME/projects" || true
+  # Prune git repos
+  prune_projects
 fi
