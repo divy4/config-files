@@ -35,13 +35,19 @@ function cleanup {
 # Tools
 
 function configure_code {
-  local command config_dir
+  local command config_dir extensions_file
   if [[ -d "$HOME/.config/VSCodium" ]]; then
     command='codium'
     config_dir="$HOME/.config/VSCodium"
+    extensions_file='code/extensions'
   elif [[ -d "$HOME/.config/Code - OSS" ]]; then
     command='code'
     config_dir="$HOME/.config/Code - OSS"
+    extensions_file='code/extensions'
+  elif is_work_machine; then
+    command='code'
+    config_dir='/mnt/c/Users/DIvy/AppData/Roaming/Code/'
+    extensions_file='code/extensions_work'
   else
     error "Unable to determine code config directory."
   fi
@@ -49,7 +55,7 @@ function configure_code {
   install_with_prompt --mode=644 -D code/settings.json "$config_dir/User/settings.json"
 
   mapfile -t missing_extensions < <(
-    comm -23 <(sort code/extensions) \
+    comm -23 <(sort "$extensions_file") \
          <("$command" --list-extensions | sort)
   )
   if [[ "${#missing_extensions[@]}" -eq 0 ]]; then
@@ -68,7 +74,10 @@ function configure_code {
 
 function configure_fluxbox {
   local regex apps
-  if [[ ! -d "$HOME/.fluxbox" ]]; then
+  if is_work_machine; then
+    echo 'Work machine, skipping.'
+    return 0
+  elif [[ ! -d "$HOME/.fluxbox" ]]; then
     echo 'No fluxbox directory, skipping.'
     return 0
   fi
@@ -139,12 +148,19 @@ function configure_git {
     s/# populate signingkey/$signingkey/g" gitconfig > "$TEMP_DIR/gitconfig"
   install_with_prompt --mode=644 "$TEMP_DIR/gitconfig" ~/.gitconfig
 
+  if is_work_machine; then
+    echo 'Work machine, skipping github SSH key generation.'
+    return 0
+  fi
   # Generate ssh key for github
   generate_ssh_key "$(hostname)-github" ~/.ssh/github
 }
 
 function configure_i3 {
-  if [[ ! -d "$HOME/.config/i3" ]]; then
+  if is_work_machine; then
+    echo 'Work machine, skipping.'
+    return 0
+  elif [[ ! -d "$HOME/.config/i3" ]]; then
     echo 'No i3 directory, skipping.'
     return 0
   fi
@@ -165,6 +181,10 @@ function configure_nano {
 }
 
 function configure_password {
+  if is_work_machine; then
+    echo 'Work machine, skipping.'
+    return 0
+  fi
   if user_has_bad_password "$(whoami)"; then
     passwd
   fi
@@ -186,6 +206,10 @@ function configure_shells {
 }
 
 function configure_ssh {
+  if is_work_machine; then
+    echo 'Work machine, skipping.'
+    return 0
+  fi
   install_with_prompt --mode=600 -D sshconfig ~/.ssh/config
   generate_ssh_key localhost ~/.ssh/localhost
   append_line_with_prompt "$(cat ~/.ssh/localhost.pub)" ~/.ssh/authorized_keys
@@ -205,6 +229,10 @@ function configure_vim {
 
 function configure_x {
   local sources source dest
+  if is_work_machine; then
+    echo 'Work machine, skipping.'
+    return 0
+  fi
   install_with_prompt --mode=644 x/user-dirs.dirs ~/.config/user-dirs.dirs
   install_with_prompt --mode=644 x/Xdefaults ~/.Xdefaults
   install_with_prompt --mode=644 x/xinitrc ~/.xinitrc
