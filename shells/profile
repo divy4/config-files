@@ -325,6 +325,10 @@ elif command -v xclip >/dev/null; then
   alias secondary='xclip -selection secondary'
 fi
 
+# AWS
+# Source authenticate_aws_cli instead of running it directly
+alias authenticate_aws_cli='source authenticate_aws_cli'
+
 # compressing/decompressing
 alias   compresstar='tar -cf'
 alias decompresstar='tar -xf'
