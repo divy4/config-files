@@ -36,21 +36,19 @@ function cleanup {
 
 function configure_code {
   local command config_dir extensions_file
-  if [[ -d "$HOME/.config/VSCodium" ]]; then
-    command='codium'
-    config_dir="$HOME/.config/VSCodium"
-    extensions_file='code/extensions'
-  elif [[ -d "$HOME/.config/Code - OSS" ]]; then
-    command='code'
-    config_dir="$HOME/.config/Code - OSS"
-    extensions_file='code/extensions'
-  elif is_work_machine; then
-    command='code'
-    config_dir='/mnt/c/Users/DIvy/AppData/Roaming/Code/'
-    extensions_file='code/extensions_work'
-  else
-    error "Unable to determine code config directory."
-  fi
+  case "$(get_machine_type)" in
+    infrastructure)
+      echo 'Infrastructure machine, skipping.'
+      return 0;;
+    personal)
+      command='codium'
+      config_dir="$HOME/.config/VSCodium"
+      extensions_file='code/extensions';;
+    work)
+      command='code'
+      config_dir='/mnt/c/Users/DIvy/AppData/Roaming/Code/'
+      extensions_file='code/extensions_work';;
+  esac
 
   install_with_prompt --mode=644 -D code/settings.json "$config_dir/User/settings.json"
 
@@ -74,8 +72,8 @@ function configure_code {
 
 function configure_fluxbox {
   local regex apps
-  if is_work_machine; then
-    echo 'Work machine, skipping.'
+  if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
+    echo 'Work or infrastructure machine, skipping.'
     return 0
   elif [[ ! -d "$HOME/.fluxbox" ]]; then
     echo 'No fluxbox directory, skipping.'
@@ -113,6 +111,10 @@ GIT_GPG_KEY_EXPIRE='1y'
 
 function configure_git {
   local name email gpg_key_comment signingkey
+  if [[ "$(get_machine_type)" == 'infrastructure' ]]; then
+    echo "Infrastructure machine, skipping."
+    return 0
+  fi
 
   # Name
   if name="$(git config --global user.name)"; then
@@ -148,7 +150,7 @@ function configure_git {
     s/# populate signingkey/$signingkey/g" gitconfig > "$TEMP_DIR/gitconfig"
   install_with_prompt --mode=644 "$TEMP_DIR/gitconfig" ~/.gitconfig
 
-  if is_work_machine; then
+  if [[ "$(get_machine_type)" == 'work' ]]; then
     echo 'Work machine, skipping github SSH key generation.'
     return 0
   fi
@@ -157,8 +159,8 @@ function configure_git {
 }
 
 function configure_i3 {
-  if is_work_machine; then
-    echo 'Work machine, skipping.'
+  if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
+    echo 'Work or infrastructure machine, skipping.'
     return 0
   elif [[ ! -d "$HOME/.config/i3" ]]; then
     echo 'No i3 directory, skipping.'
@@ -181,7 +183,7 @@ function configure_nano {
 }
 
 function configure_password {
-  if is_work_machine; then
+  if [[ "$(get_machine_type)" == 'work' ]]; then
     echo 'Work machine, skipping.'
     return 0
   fi
@@ -191,8 +193,12 @@ function configure_password {
 }
 
 function configure_scripts {
-  local source destination
-  for source in scripts/*; do
+  local sources source destination
+  mapfile -t sources < <(
+    find scripts/ -type f \
+      -wholename 'scripts/common/*' -or -wholename "scripts/$(get_machine_type)/*"
+  )
+  for source in "${sources[@]}"; do
     destination="/usr/local/bin/$(basename "$source")"
     install_with_prompt --sudo --mode=755 --owner=root --group=root \
       "$source" "$destination"
@@ -203,11 +209,12 @@ function configure_shells {
   install_with_prompt --mode=644 shells/profile ~/.profile
   install_with_prompt --mode=644 shells/bashrc ~/.bashrc
   install_with_prompt --mode=644 shells/zshrc ~/.zshrc
+  install_with_prompt --sudo --mode=755 shells/health_check.sh /etc/profile.d/health_check.sh
 }
 
 function configure_ssh {
-  if is_work_machine; then
-    echo 'Work machine, skipping.'
+  if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
+    echo 'Work or infrastructure machine, skipping.'
     return 0
   fi
   install_with_prompt --mode=600 -D sshconfig ~/.ssh/config
@@ -229,8 +236,8 @@ function configure_vim {
 
 function configure_x {
   local sources source dest
-  if is_work_machine; then
-    echo 'Work machine, skipping.'
+  if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
+    echo 'Work or infrastructure machine, skipping.'
     return 0
   fi
   install_with_prompt --mode=644 x/user-dirs.dirs ~/.config/user-dirs.dirs

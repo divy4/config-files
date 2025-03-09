@@ -274,6 +274,11 @@ zsh)
   # Shell prompt
   # shellcheck disable=SC2016
   PROMPT='%F{red}${zsh_prompt_start_time} %F{yellow}${zsh_prompt_diff_time} %F{green}%~ %F{cyan}${vcs_info_msg_0_}%f%(?..[%?] )$ '
+
+  # Prepend hostname if not running in an X session
+  if [[ -z "${DISPLAY:-}" ]]; then
+    PROMPT="%m $PROMPT"
+  fi
   ;;
 bash)
   # Using PROMPT_COMMAND to dynamically update the prompt
@@ -303,6 +308,11 @@ bash)
 
     # Update prompt (because bash doesn't resolve variables within the prompt)
     PS1="${PURPLE}${start_time} ${CYAN}${diff_time} ${GREEN}\w $WHITE${exit_status}$ "
+
+    # Prepend hostname if not running in an X session
+    if [[ -z "${DISPLAY:-}" ]]; then
+      PS1="\h $PS1"
+    fi
 
     # Measure time from previous prompt (i.e. enter pressed with no command)
     PROMPT_START_TIME="$end_time"

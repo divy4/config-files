@@ -13,6 +13,7 @@
     "vboxmanage",
     "virtualbox",
     "vram",
+    "wholename",
     "zkbd"
   ],
   "editor.renderControlCharacters": false,
