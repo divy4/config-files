@@ -292,9 +292,15 @@ function get_machine_id {
   fi
 }
 
-# Returns true if this is my work machine
-function is_work_machine {
-  [[ "$(whoami)" != 'dan' ]]
+# Returns the machine type, i.e. personal/work/infrastructure
+function get_machine_type {
+  if [[ "$(whoami)" != 'dan' ]]; then
+    echo 'work'
+  elif [[ -n "${DISPLAY:-}" ]]; then
+    echo 'personal'
+  else
+    echo 'infrastructure'
+  fi
 }
 
 # Assuming every line is a command, only returns the lines that correspond to

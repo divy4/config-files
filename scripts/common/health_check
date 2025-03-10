@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NUM_FAILED='0'
+
+
+function main {
+  local check_name
+  for check_name in $(get_check_functions); do
+    echo "---------- ${check_name^} ----------"
+    "check_$check_name"
+    echo
+  done
+  exit_if_failed
+}
+
+
+# Check for failed services
+function check_systemd {
+  if systemctl --failed | grep --quiet '0 loaded units listed.'; then
+    pass 'All systemctl services healthy.'
+  else
+    fail "Failed systemctl services found."
+    systemctl --failed
+  fi
+}
+
+
+# Check filesystem usage
+function check_filesystems {
+  df --human-readable \
+  | grep --perl-regexp --invert-match '\s/(dev|run|sys|tmp)' \
+  | highlight green '.*(|[0-6])[0-9]%.*' \
+  | highlight yellow '.*[7-8][0-9]%.*' \
+  | highlight red '.*(9|10)[0-9]%.*'
+
+  if df | grep --perl-regexp --quiet '.*(9|10)[0-9]%.*' ; then
+    fail 'Filesystem over 90% found.'
+  fi
+}
+
+
+# Helpers
+
+
+function get_check_functions {
+ declare -F \
+  | grep --perl-regexp --only-matching '(?<=\scheck_)\w*$' \
+  | sort --ignore-case
+}
+
+
+# Highlight output with regex patterns
+function highlight {
+  local pattern color color_code
+  color="$1"
+  pattern="${2:-.*}"
+
+  case "$color" in
+  red)
+    color_code='ms=01;31';;
+  yellow)
+    color_code='ms=01;33';;
+  green)
+    color_code='ms=01;32';;
+  *)
+    echo "Error: unrecognized color '$color'"
+    return 1
+  esac
+
+  GREP_COLORS="$color_code" grep --perl-regexp --color=always "$pattern|$"
+}
+
+
+# Same as echo command, but output as green
+function pass {
+  echo "$@" | highlight green
+}
+
+
+function fail {
+  echo "$@" | highlight red
+  NUM_FAILED=$(( NUM_FAILED + 1 ))
+}
+
+
+function exit_if_failed {
+  if [[ "$NUM_FAILED" != '0' ]]; then
+    exit "$NUM_FAILED"
+  fi
+}
+
+main "$@"
