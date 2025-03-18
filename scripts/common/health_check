@@ -15,17 +15,6 @@ function main {
 }
 
 
-# Check for failed services
-function check_systemd {
-  if systemctl --failed | grep --quiet '0 loaded units listed.'; then
-    pass 'All systemctl services healthy.'
-  else
-    fail "Failed systemctl services found."
-    systemctl --failed
-  fi
-}
-
-
 # Check filesystem usage
 function check_filesystems {
   df --human-readable \
@@ -36,6 +25,32 @@ function check_filesystems {
 
   if df | grep --perl-regexp --quiet '.*(9|10)[0-9]%.*' ; then
     fail 'Filesystem over 90% found.'
+  fi
+}
+
+
+# Check firewall
+function check_firewall {
+  # Skip if ufw is not installed
+  if ! command -v ufw &>/dev/null; then
+    return
+  fi
+  if systemctl is-active ufw --quiet && systemctl is-enabled ufw --quiet; then
+    pass "Firewall is active and enabled"
+  else
+    fail "Firewall is inactive or disabled"
+    systemctl status ufw
+  fi
+}
+
+
+# Check for failed services
+function check_systemd {
+  if systemctl --failed | grep --quiet '0 loaded units listed.'; then
+    pass 'All systemctl services healthy.'
+  else
+    fail "Failed systemctl services found."
+    systemctl --failed
   fi
 }
 
