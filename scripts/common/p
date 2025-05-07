@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "$#" -eq 0 ]]; then
+  echo "Usage: p FILE|MODULE_DIR [args...]"
+  exit 1
+elif [[ -f "$1" ]]; then
+  black "$1"
+  python "$@"
+elif [[ -d "$1" ]]; then
+  black "$1"
+  python -m "$@"
+else
+  echo "ERROR: Unknown argument format."
+  exit 1
+fi

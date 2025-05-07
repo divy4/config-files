@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+function main {
+  local args
+  case "${1:-}:${2:-}" in
+  trigger:cronjob)
+    print_help_if_less_than "$#" 3 "Usage: k trigger cronjob <name> [kubectl create job flags]"
+    args=(create job --from=cronjob/"$3" "$3-$(date +%s)" "${@:4}");;
+  *)
+    args=("$@");;
+  esac
+  sudo k3s kubectl "${args[@]}" | parse_output "$@"
+}
+
+function print_help_if_less_than {
+  if [[ "$1" -lt "$2" ]]; then
+    echo "${@:3}"
+    exit 1
+  fi
+}
+
+JQ_PARSER='
+  def is_not_object:
+    .apiVersion == null or .kind == null or .metadata == null
+  ;
+
+  def is_list_object:
+    (. | is_object) and .kind == "List"
+  ;
+
+  def parse_object:
+    if . | is_not_object then
+      1 / 0
+    elif .kind == "List" then
+      .items = [.items[] | parse_object]
+    elif .kind == "Secret" then
+      .data[] |= @base64d
+      | .stringData = .data
+      | del(.data)
+    else
+      .
+    end
+  ;
+
+  . | parse_object
+'
+
+function parse_output {
+  local parser='ignore'
+
+  # Figure out how we're going to parse this
+  while [[ $# -ne 0 ]]; do
+    case "$1" in
+    --output=json|-o=json)
+      parser='json';;
+    --output=yaml|-o=yaml)
+      parset='yaml';;
+    --output|-o)
+      shift
+      case "$1" in
+      json)
+        parser='json';;
+      yaml)
+        parser='yaml';;
+      esac
+    esac
+
+    shift
+  done
+
+  # Parse it
+  case "$parser" in
+  ignore)
+    cat;;
+  json)
+    jq --sort-keys "$JQ_PARSER";;
+  yaml)
+    yq --sort-keys --yaml-roundtrip "$JQ_PARSER";;
+  esac
+}
+
+main "$@"
