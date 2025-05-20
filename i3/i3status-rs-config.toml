@@ -83,7 +83,7 @@ warning = 80
 [[block]]
 block = "nvidia_gpu"
 interval = 5
-format = " $temperature  $utilization  $memory  $power "
+format = " $power  $memory  $utilization  $temperature  $fan_speed"
 idle = 50
 good = 70
 info = 75
