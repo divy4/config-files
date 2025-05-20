@@ -83,11 +83,21 @@ warning = 80
 [[block]]
 block = "nvidia_gpu"
 interval = 5
-format = " $temperature  $utilization  $memory  $power"
+format = " $temperature  $utilization  $memory  $power "
 idle = 50
 good = 70
 info = 75
 warning = 80
+
+[[block]]
+block = "service_status"
+service = "nvidia-fan-control"
+active_format = "  "
+inactive_format = "  "
+inactive_state = "Warning"
+[[block.click]]
+button = "middle"
+cmd = "xterm -e 'journalctl --unit nvidia-fan-control.service --follow --lines=3600 --output=cat'"
 
 [[block]]
 block = "time"
