@@ -217,7 +217,14 @@ function configure_ssh {
     echo 'Work or infrastructure machine, skipping.'
     return 0
   fi
-  install_with_prompt --mode=600 -D sshconfig ~/.ssh/config
+
+  cat sshconfig > ~/.ssh/config_temp
+  if [[ -f ~/.ssh/config.custom ]]; then
+    cat ~/.ssh/config.custom >> ~/.ssh/config_temp
+  fi
+  install_with_prompt --mode=600 -D ~/.ssh/config_temp ~/.ssh/config
+  rm ~/.ssh/config_temp
+
   generate_ssh_key localhost ~/.ssh/localhost
   append_line_with_prompt "$(cat ~/.ssh/localhost.pub)" ~/.ssh/authorized_keys
 }
