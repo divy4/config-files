@@ -10,6 +10,12 @@ gpu = [
 ]
 
 [[block]]
+block = "focused_window"
+[block.format]
+full = " $title.str(max_w:20) |"
+short = " $title.str(max_w:10) |"
+
+[[block]]
 block = "sound"
 
 [[block]]
@@ -104,3 +110,27 @@ block = "time"
 interval = 5
 [block.format]
 short = "$icon $timestamp.datetime(f:%R)"
+
+
+[[block]]
+block = "menu"
+text = ""
+
+[[block.items]]
+display = "-&gt; Exit i3 &lt;-"
+confirm_msg = "-&gt; Exit i3? &lt;-"
+cmd = "i3-msg exit"
+
+[[block.items]]
+display = "-&gt; Sleep &lt;-"
+cmd = "systemctl suspend"
+
+[[block.items]]
+display = "-&gt; Reboot &lt;-"
+confirm_msg = "-&gt; Reboot? &lt;-"
+cmd = "reboot"
+
+[[block.items]]
+display = "-&gt; Shut down &lt;-"
+confirm_msg = "-&gt; Shut down? &lt;-"
+cmd = "shutdown now"
