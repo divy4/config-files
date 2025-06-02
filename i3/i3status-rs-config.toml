@@ -21,9 +21,14 @@ block = "sound"
 [[block]]
 block = "bluetooth"
 mac = "88:C9:E8:58:F5:55"
-[[block.click]]
-button = "middle"
-cmd = "headphones toggle"
+format = " $icon{$percentage|} "
+disconnected_format = " $icon{ $percentage|} "
+
+[[block]]
+block = "bluetooth"
+mac = "AC:8E:BD:67:12:C5"
+format = " $icon{$percentage|} "
+disconnected_format = " $icon{ $percentage|} "
 
 [[block]]
 block = "net"
@@ -47,6 +52,14 @@ block = "disk_space"
 interval = 600
 format = "$icon /home $used/$total($percentage)"
 path = "/home"
+warning = 20
+alert = 10
+
+[[block]]
+block = "disk_space"
+interval = 600
+format = "$icon /home/dan/data $used/$total($percentage)"
+path = "/home/dan/data"
 warning = 20
 alert = 10
 
