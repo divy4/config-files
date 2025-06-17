@@ -55,7 +55,7 @@ function parse_output {
     --output=json|-o=json)
       parser='json';;
     --output=yaml|-o=yaml)
-      parset='yaml';;
+      parser='yaml';;
     --output|-o)
       shift
       case "$1" in
