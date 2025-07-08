@@ -79,6 +79,14 @@ floating_modifier $mod
 # or left-clicking anywhere into the window while holding the floating modifier.
 tiling_drag modifier titlebar
 
+# Screenshot
+
+# Selection by default
+# Active window when +shift
+bindsym Print exec            --no-startup-id maim --hidecursor --select ~/screenshot.png
+bindsym Shift+Print exec      --no-startup-id maim --hidecursor --window "$(xdotool getactivewindow)" ~/screenshot.png
+
+
 # Applications
 
 bindsym $mod+c exec codium
