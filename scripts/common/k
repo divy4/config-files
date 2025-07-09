@@ -1,23 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+KUBECTL_COMMAND=(sudo k3s kubectl)
+
 function main {
   local args
   case "${1:-}:${2:-}" in
+  list:context|list:contexts)
+    [[ "$#" -eq 2 ]] || print_help "Usage: k list contexts"
+    args=(config get-contexts);;
+  set:context)
+    [[ "$#" -eq 3 ]] || print_help "Usage: k set context CONTEXT"
+    args=(config set-context "$3");;
+  set:namespace)
+    [[ "$#" -eq 3 ]] || print_help "Usage: k set namespace NAMESPACE"
+    args=(config set-context --current "--namespace=$3");;
   trigger:cronjob)
-    print_help_if_less_than "$#" 3 "Usage: k trigger cronjob <name> [kubectl create job flags]"
+    [[ "$#" -lt 3 ]] || print_help "Usage: k trigger cronjob CRONJOB [kubectl create job flags]"
     args=(create job --from=cronjob/"$3" "$3-$(date +%s)" "${@:4}");;
   *)
     args=("$@");;
   esac
-  sudo k3s kubectl "${args[@]}" | parse_output "$@"
+  "${KUBECTL_COMMAND[@]}" "${args[@]}" | parse_output "$@"
 }
 
-function print_help_if_less_than {
-  if [[ "$1" -lt "$2" ]]; then
-    echo "${@:3}"
-    exit 1
-  fi
+function print_help {
+  echo "$@"
+  exit 1
 }
 
 JQ_PARSER='
