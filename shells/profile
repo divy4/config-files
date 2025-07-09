@@ -350,6 +350,7 @@ alias ga='git add'
 alias gaa='git add -A'
 alias gaacapfwl='git add -A; git commit --amend --no-edit; git push --force-with-lease'
 alias gb='git branch'
+alias gbprune='git prune-local-branches'
 alias gc='git commit -m'
 alias gupstream='git set-upstream'
 alias gca='git commit --amend --no-edit'
@@ -376,7 +377,6 @@ alias df='df -h'
 alias du='du -cah --apparent-size'
 alias gdiff='git diff --no-index'
 alias grep='grep --color=auto'
-alias k='kubectl'
 alias l='ls'
 alias ls='ls --color=auto'
 alias la='ls -a'
@@ -398,6 +398,4 @@ fi
 if [[ "$PROFILE_IS_WSL" == 'true' ]] && [[ "$(whoami)" != 'dan' ]]; then
   # Start in projects folder
   cd "$HOME/projects" || true
-  # Prune git repos
-  prune_projects
 fi

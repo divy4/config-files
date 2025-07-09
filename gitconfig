@@ -11,6 +11,11 @@
 [alias]
   lg = log -20 --pretty=format:'%Cred%h%Creset - %s %Cgreen(%cr %an)%Creset%C(yellow)%d%Creset' --abbrev-commit --date=relative
   lgr = log --graph --decorate --pretty=oneline --abbrev-commit
+  prune-local-branches = "! \
+    git branch \
+    | awk '$1 !~ /^(\\*|main|master|dev|devel|develop|development)$|^env\\// {print $1}' \
+    | xargs --no-run-if-empty git branch --delete --force \
+  "
   set-upstream = "! \
     branch="$(git branch --show-current)"; \
     if git config --get-regex "branch.${branch:?No branch checked out}.remote" > /dev/null; then \
