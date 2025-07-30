@@ -9,6 +9,8 @@ source "$REPO_PATH/helpers.sh"
 
 function main {
   local tool
+  # Sleep for 0 seconds so the terminal size is detected correctly... magic...
+  sleep 0
   fail_if_running_as_root
   trap cleanup EXIT
   echo 'Creating temporary directory...'
