@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+from typing import Any, Dict, Generator, Iterable, List, Set, Tuple
+
+import argparse
+import enum
+import re
+import pathlib
+import subprocess
+import sys
+import time
+
+LOCKED_FILE_LOOP_SECONDS = 0.1
+RENAME_COOLDOWN = 0.1
+
+NUMBER_PREFIX = re.compile("^[0-9]+")
+
+
+class FileAction(enum.Enum):
+    CREATE = "CREATE"
+    MOVED_FROM = "MOVED_FROM"
+    MOVED_TO = "MOVED_TO"
+
+
+def autorename_files(args: Any) -> None:
+    """Autorename files in a folder to be numbered sequentially."""
+    extension_pattern = extensions_to_regex(args.extensions)
+    current_files = get_numbered_files(args.folder, extension_pattern)
+    last_rename_path = None
+    last_rename_time = 0
+
+    for file, action, event_time in watch_directory(args.folder, extension_pattern):
+        print(f"Change detected for {file.name}", end="")
+
+        # If the file is already registered and was renamed recently,
+        # ignore it (to prevent an endless loop of renaming files).
+        if current_files.get(file, 0) > event_time - args.cooldown:
+            print(
+                f", but it was modified less than {args.cooldown} seconds ago. Ignoring."
+            )
+            continue
+
+        # Prune files that don't exist anymore
+        for x in tuple(current_files.keys()):
+            if not x.exists() or x == file:
+                del current_files[x]
+
+        # Figure out what the file should be called
+        # ...when we haven't renamed anything for a while
+        if event_time > last_rename_time + args.pairing_window:
+            prefix = get_max_file_number_prefix(current_files, True)
+            pair_index = 1
+            target_file = args.folder / f"{prefix}{file.suffix}"
+        # ...or when we have renamed something recently
+        else:
+            # And if this is the first pairing, rename the first file we renamed
+            if pair_index == 1:
+                target_file = (
+                    args.folder / f"{last_rename_path.stem}-1{last_rename_path.suffix}"
+                )
+                rename_file(last_rename_path, target_file)
+            prefix = get_max_file_number_prefix(current_files, False)
+            pair_index += 1
+            target_file = args.folder / f"{prefix}-{pair_index}{file.suffix}"
+
+        # Rename the file
+        if rename_file(file, target_file):
+            last_rename_path = target_file
+            last_rename_time = event_time
+            current_files[target_file] = event_time
+        print(".")
+
+
+def rename_file(source: pathlib.Path, target: pathlib.Path) -> bool:
+    """Renames a file. Returns true if the file was renamed."""
+    print(f", renaming {source.name} to {target.name}", end="")
+
+    # Skip if the target is the same as the source.
+    if source == target:
+        print(f", but it already has the correct name. Ignoring.")
+        return False
+
+    # Run the last checks before renaming the file
+    wait_for_file_locks(source)
+
+    # Skip if the source doesn't exist
+    if not source.exists():
+        print(
+            ", but it no longer exists after waiting for other processes to "
+            "unlock it. Ignoring."
+        )
+        return False
+
+    # Raise error if the target already exists
+    if target.exists():
+        raise RuntimeError(
+            f"Unable to rename {source.name} -> {target.name}: "
+            f"{target.name} already exists."
+        )
+
+    # Rename the file
+    source.rename(target)
+    return True
+
+
+# Predictions
+
+
+def get_max_file_number_prefix(
+    current_files: Dict[pathlib.Path, int | float],  # The current set of files.
+    increment: bool,  # If the number returned should be incremented by one.
+) -> str:
+    """Returns the largest number prefix in a set of files.."""
+    if len(current_files) == 0:
+        return "0"
+    # Find file with the largest starting number
+    file = max(current_files.keys(), key=lambda x: int(get_number_prefix(x)))
+    prefix = get_number_prefix(file)
+    # Figure out the number of digits it has (in case it's zero-padded)
+    num_digits = len(prefix)
+    # Add one
+    number = int(prefix)
+    if increment:
+        number += 1
+    # And make a Path out of it
+    return f"{number:0{num_digits}}"
+
+
+# File monitoring / lookup
+
+
+def watch_directory(
+    folder: pathlib.Path,  # The folder to monitor.
+    extension_pattern: re.Pattern,  # The file extensions to monitor.
+) -> Generator[Tuple[pathlib.Path, FileAction, float], None, None]:
+    """Yields files, the action performed, and the time as they are
+    added/moved to the directory."""
+
+    last_move_from_time = 0
+    for path, action, event_time in watch_directory_with_inotifywait(
+        folder, extension_pattern
+    ):
+        # Renaming is a move from + to, so note the time if moved away...
+        if action == FileAction.MOVED_FROM:
+            last_move_from_time = event_time
+            continue
+        # ...and ignore files that were renamed inside the folder
+        if (
+            action == FileAction.MOVED_TO
+            and last_move_from_time > event_time - RENAME_COOLDOWN
+        ):
+            last_move_from_time = 0
+            continue
+        last_move_from_time = 0
+        # Yield the event because it's a new file or something moved in
+        yield path, action, event_time
+
+
+def watch_directory_with_inotifywait(
+    folder: pathlib.Path,  # The folder to monitor.
+    extension_pattern: re.Pattern,  # The file extensions to monitor.
+) -> Generator[Tuple[pathlib.Path, FileAction, float], None, None]:
+    """Returns the command needed to watch a directory."""
+    command = [
+        "inotifywait",
+        "--monitor",
+        "--event",
+        "create,moved_from,moved_to",
+        "--includei",
+        extension_pattern.pattern,
+        "--format",
+        "%w%f,%e",
+        "--timefmt",
+        "%s",
+        str(folder),
+    ]
+    for line in run_command(command):
+        split = line.split(",")
+        yield pathlib.Path(split[0]), FileAction(split[1]), time.time()
+
+
+def wait_for_file_locks(file: pathlib.Path) -> None:
+    """Waits until no processes are currently using a file."""
+    first_attempt = True
+    while True:
+        try:
+            for _ in run_command(("fuser", str(file)), stderr=subprocess.DEVNULL):
+                pass
+            if first_attempt:
+                print(f"{file.name} is in use by another process, waiting...")
+                first_attempt = False
+            time.sleep(LOCKED_FILE_LOOP_SECONDS)
+        except subprocess.SubprocessError:
+            if not first_attempt:
+                print(f"{file.name} unlocked.")
+            return
+
+
+def get_numbered_files(
+    folder: pathlib.Path,  # The folder to check for files in.
+    extension_pattern: re.Pattern,  # The file extensions to filter on.
+) -> Dict[pathlib.Path, float | int]:
+    """Returns all numbered files in a path."""
+    current_time = time.time()
+    return {
+        x: current_time
+        for x in folder.glob("*")
+        if x.is_file() and x.name[0].isdigit() and extension_pattern.search(x.name)
+    }
+
+
+# I/O
+
+
+def extensions_to_regex(extensions: Iterable[str]) -> re.Pattern:
+    """Converts a set of extensions into a regex pattern that matches files with
+    those extensions. Matches everything if extensions is empty."""
+    # Just match the end of the line if nothing is passed
+    if len(extensions) == 0:
+        return re.compile("$")
+    # Convert all extensions into individual regex patterns...
+    temp = set(f"\\.{x.removeprefix(".")}$" for x in extensions)
+    # ...and join them together
+    return re.compile("|".join(temp))
+
+
+def run_command(command: Iterable[str], stderr=None) -> Generator[str, None, None]:
+    """Runs a command, yielding each line of output."""
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=stderr)
+
+    # Yield each line of the command
+    for line in iter(process.stdout.readline, b""):
+        yield line.rstrip().decode("utf-8")
+
+    # Exit unsuccessfully if the subprocess did
+    process.communicate()
+    if process.returncode != 0:
+        raise subprocess.SubprocessError(
+            f"Command {command} exited with exit code {process.returncode}."
+        )
+
+
+def get_number_prefix(file: pathlib.Path) -> str:
+    """Returns number prefix of a string."""
+    if not file.name[0].isdigit():
+        raise ValueError(f"File {file.name} does not start with a digit.")
+    return NUMBER_PREFIX.match(file.name).group(0)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog=pathlib.Path(__file__).name)
+    parser.add_argument(
+        "--cooldown",
+        type=float,
+        default=10,
+        help="(Default: 10.0) The number of seconds to wait before a file can be renamed twice",
+    )
+    parser.add_argument(
+        "--pairing-window",
+        type=float,
+        default=-1,
+        help='(Default: disabled) The number of seconds between autonaming files where they will be considered a "pair" and given the same base name.',
+    )
+    parser.add_argument(
+        "folder", type=pathlib.Path, help="The folder to monitor for changes"
+    )
+    parser.add_argument(
+        "extensions",
+        type=str,
+        nargs="*",
+        help="(Default: all files) File extensions to limit renaming to.",
+    )
+    args = parser.parse_args(sys.argv[1:])
+
+    try:
+        autorename_files(args)
+    except KeyboardInterrupt:
+        print(" Interrupting...")
