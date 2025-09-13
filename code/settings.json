@@ -39,6 +39,7 @@
   },
   "files.eol": "\n",
   "files.insertFinalNewline": true,
+  "git.openRepositoryInParentFolders": "never",
   "redhat.telemetry.enabled": false,
   "terminal.integrated.shell.windows": "C:\\Program Files\\Git\\bin\\bash.exe",
   "vscode-yaml-sort.lineWidth": 80,
