@@ -94,13 +94,28 @@ case "$PROFILE_OS_ID" in
 esac
 
 
-
 ##### History #####
 case "$PROFILE_SHELL" in
 zsh)
   HISTFILE=~/.zsh_history
   HISTSIZE=10000
-  SAVEHIST=10000;;
+  SAVEHIST=10000
+  # Limit what's stored to zsh history
+  function zshaddhistory {
+    emulate -L zsh
+    # Commands that start with spaces or have password flags
+    # Commands that the line starts with
+    # Commands that appear anywhere in a set of pipes
+    if [[ "$line" =~ "(^ |--password|^\.config$)" ]] \
+      || [[ "$line" =~ "^(sudo *)?(cd|clear|exit|ls|headphones|make|startx)( |$)" ]] \
+      || [[ "$line" =~ "^(.*\| *)?(sudo *)?(generate_password|gocryptfs)( |$)" ]]; then
+        return 1
+    else
+        print -sr -- "${1%%$'\n'}"
+        fc -p
+    fi
+  }
+  ;;
 bash)
   ;;
 sh)
