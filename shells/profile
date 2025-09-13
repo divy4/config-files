@@ -106,9 +106,9 @@ zsh)
     # Commands that start with spaces or have password flags
     # Commands that the line starts with
     # Commands that appear anywhere in a set of pipes
-    if [[ "$line" =~ "(^ |--password|^\.config$)" ]] \
-      || [[ "$line" =~ "^(sudo *)?(cd|clear|exit|ls|headphones|make|startx)( |$)" ]] \
-      || [[ "$line" =~ "^(.*\| *)?(sudo *)?(generate_password|gocryptfs)( |$)" ]]; then
+    if [[ "$1" =~ "(^\s|--password|^\.config\s)" ]] \
+      || [[ "$1" =~ "^(sudo\s*)?(cd|clear|exit|ls|headphones|make|startx)\s" ]] \
+      || [[ "$1" =~ "^(.*\|\s*)?(sudo\s*)?(generate_password|gocryptfs|gpg)\s" ]]; then
         return 1
     else
         print -sr -- "${1%%$'\n'}"
