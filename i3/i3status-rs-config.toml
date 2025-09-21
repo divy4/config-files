@@ -130,6 +130,10 @@ block = "menu"
 text = ""
 
 [[block.items]]
+display = "-&gt; Steam &lt;-"
+cmd = "/usr/bin/steam steam://open/games"
+
+[[block.items]]
 display = "-&gt; Exit i3 &lt;-"
 confirm_msg = "-&gt; Exit i3? &lt;-"
 cmd = "i3-msg exit"
