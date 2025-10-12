@@ -42,6 +42,7 @@ cmd = "network toggle"
 [[block]]
 block = "disk_space"
 interval = 600
+info_type = "free"
 format = "$icon / $used/$total($percentage)"
 path = "/"
 warning = 20
@@ -50,6 +51,7 @@ alert = 10
 [[block]]
 block = "disk_space"
 interval = 600
+info_type = "free"
 format = "$icon /home $used/$total($percentage)"
 path = "/home"
 warning = 20
@@ -58,6 +60,7 @@ alert = 10
 [[block]]
 block = "disk_space"
 interval = 600
+info_type = "free"
 format = "$icon /home/dan/data $used/$total($percentage)"
 path = "/home/dan/data"
 warning = 20
