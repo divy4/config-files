@@ -48,7 +48,9 @@ fi
 
 export PATH="$PATH:/home/dan/.local/bin"
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/cuda/targets/x86_64-linux/lib"
-export XDG_MENU_PREFIX=arch-
+if [[ -z "${DISPLAY:-}" ]]; then
+  export XDG_MENU_PREFIX=arch-
+fi
 
 # fix gpg
 export GPG_TTY="$(tty)"

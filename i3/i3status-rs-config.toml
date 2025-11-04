@@ -42,29 +42,42 @@ cmd = "network toggle"
 [[block]]
 block = "disk_space"
 interval = 600
-info_type = "free"
+info_type = "used"
 format = "$icon / $used/$total($percentage)"
 path = "/"
-warning = 20
-alert = 10
+alert_unit = "GB"
+warning = 175
+alert = 220
 
 [[block]]
 block = "disk_space"
 interval = 600
-info_type = "free"
+info_type = "used"
 format = "$icon /home $used/$total($percentage)"
 path = "/home"
-warning = 20
-alert = 10
+alert_unit = "GB"
+warning = 1200
+alert = 1400
 
 [[block]]
 block = "disk_space"
 interval = 600
-info_type = "free"
+info_type = "used"
 format = "$icon /home/dan/data $used/$total($percentage)"
 path = "/home/dan/data"
-warning = 20
-alert = 10
+alert_unit = "GB"
+warning = 1800
+alert = 2100
+
+[[block]]
+block = "disk_space"
+interval = 600
+info_type = "used"
+format = "$icon /backup $used/$total($percentage)"
+path = "/backup"
+alert_unit = "GB"
+warning = 1400
+alert = 1600
 
 [[block]]
 block = "memory"
