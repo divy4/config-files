@@ -1,0 +1,1237 @@
+#!/usr/bin/env python
+from typing import Any, Dict, List, Iterable, Set, Tuple
+from collections.abc import Callable
+
+import boto3
+import boto3.s3.transfer
+import datetime
+import getpass
+import hashlib
+import json
+import logging
+import os
+import pathlib
+import re
+import subprocess
+import sys
+import tarfile
+import tempfile
+import time
+
+CONFIG_PATH = pathlib.Path("/etc/upload_backup.json")
+CONFIG = None
+LOGGER = None
+GPG_PATH = "/usr/bin/gpg"
+TEMP_PATH = pathlib.Path("/tmp")
+
+BYTE_REGEX = re.compile(
+    r"(?P<number>[1-9][0-9]*)(?P<multiplier>K|Ki|M|Mi|G|Gi|T|Ti)(?P<bit_or_byte>b|B)(?P<rate>(ps|/s)?)"
+)
+BYTE_MULTIPLIER = {
+    "K": 1000,
+    "Ki": 1024,
+    "M": 1000**2,
+    "Mi": 1024**2,
+    "G": 1000**3,
+    "Gi": 1024**3,
+    "T": 1000**4,
+    "Ti": 1024**4,
+}
+
+
+class Tree:
+    pass
+
+
+class TreeNode:
+    pass
+
+
+class TableLogger:
+    pass
+
+
+Section = pathlib.Path
+File = pathlib.Path
+TreeNodeish = str | Section | TreeNode
+SectionFiles = Dict[Section, Set[File]]
+
+
+def main() -> None:
+    global CONFIG, LOGGER
+    CONFIG = Config(CONFIG_PATH)
+
+    # Setup logging
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = TableFormatter()
+    handler.setFormatter(formatter)
+    logging.basicConfig(level=CONFIG.log_level, handlers=[handler])
+    LOGGER = logging.getLogger("main")
+
+    # Initialize
+    tree = Tree()
+    backup_manager = BackupManager()
+
+    # Map files to sections
+    tree.create_sections(backup_manager.previous_sections, ignore_missing=True)
+    tree.balance_sections()
+
+    # Upload the sections and checksum metadata
+    backup_manager.set_sections(tree.get_sections())
+    backup_manager.sync_sections()
+
+    LOGGER.info("Done!")
+
+
+##########
+# Config #
+##########
+
+
+class Config:
+    """The configuration for this script."""
+
+    def __init__(self, config_path: File) -> "Config":
+        """Loads configuration for this script."""
+        print(f"Loading configuration from {config_path}...")
+        self.__config_path = config_path
+
+        self.__check_file_permissions()
+        try:
+            config = json.loads(config_path.read_text())
+        except json.decoder.JSONDecodeError as error:
+            self.__error(error)
+
+        self.log_level = self.__load_log_level(config, "log_level")
+        self.checksum_method = self.__load_string(
+            config, "checksum_method", ["metadata", "content"]
+        )
+        self.max_tar_size = self.__load_size(config, "max_tar_size", bit_or_byte="byte")
+        self.desired_tar_size = self.__load_size(
+            config, "desired_tar_size", bit_or_byte="byte"
+        )
+        self.desired_tar_size_min = int(self.desired_tar_size * 0.5)
+        self.desired_tar_size_max = min(
+            self.max_tar_size, int(self.desired_tar_size * 1.5)
+        )
+        self.local_backup_path = self.__load_path(
+            config, "local_backup_path", path_type="dir"
+        )
+        self.local_checksums_path = self.__load_path(
+            config, "local_checksums_path", extension=".json", path_type="file"
+        )
+        self.gpg_encryption_key = self.__load_string(config, "gpg_encryption_key")
+        self.s3_bucket = self.__load_string(config, "s3_bucket")
+        self.s3_subpath = self.__load_string(config, "s3_subpath")
+        self.s3_lock_days = self.__load_int(config, "s3_lock_days")
+        self.s3_upload_speed = (
+            self.__load_size(config, "s3_upload_speed", bit_or_byte="bit", is_rate=True)
+            // 8
+        )  # Convert to bytes/s
+
+        # AWS session
+        self.__session = boto3.Session(
+            aws_access_key_id=self.__load_string(config, "aws_access_key_id"),
+            aws_secret_access_key=self.__load_string(config, "aws_secret_access_key"),
+        )
+
+        # S3 client
+        self.s3_client = self.__session.client("s3")
+        self.s3_transfer_config = boto3.s3.transfer.TransferConfig(
+            max_bandwidth=self.s3_upload_speed
+        )
+
+        print("Config loaded!")
+
+    def __check_file_permissions(self) -> None:
+        """Checks the permissions of the config file."""
+        owner = self.__config_path.owner()
+        group = self.__config_path.group()
+        perms = self.__config_path.stat().st_mode
+        exp_owner = "root"
+        exp_group = getpass.getuser()
+        exp_perms = 0o100640
+        exp_perms_str = "640"
+        instructions = (
+            "Set the correct permissions via"
+            f" 'sudo chown {exp_owner}:{exp_group} {self.__config_path}' and"
+            f" 'sudo chmod {exp_perms_str} {self.__config_path}'"
+        )
+        if owner != exp_owner:
+            self.__error(
+                f"File is owned by {owner} instead of '{exp_owner}'. {instructions}"
+            )
+        elif group != exp_group:
+            self.__error(
+                f"File belongs to {group} instead of '{exp_group}'. {instructions}"
+            )
+        elif perms != exp_perms:
+            self.__error(f"File has incorrect permissions. {instructions}")
+
+    def __load_int(self, config: Dict, key: str) -> int:
+        """Loads an integer from the config."""
+        # Key exists
+        if key not in config:
+            self.__error(f"Missing {key}.")
+        value = config[key]
+        # Value is right type
+        if not isinstance(value, int):
+            self.__error(f"{key} value '{value}' is not an int.")
+        return value
+
+    def __load_string(self, config: Dict, key: str, expected=None) -> str:
+        """Loads a string from the config."""
+        # Key exists
+        if key not in config:
+            self.__error(f"Missing {key}.")
+        value = config[key]
+        # Value is right type
+        if not isinstance(value, str):
+            self.__error(f"{key} value '{value}' is not a string.")
+        # Value doesn't match expected values
+        if expected and value not in expected:
+            self.__error(f"{key} value '{value}' is not one of {expected}.")
+        return value
+
+    def __load_log_level(self, config: Dict, key: str) -> int:
+        """Loads a log level from the config."""
+        value = self.__load_string(config, key)
+        # Value is correct format
+        level = logging.getLevelName(value.upper())
+        if not isinstance(level, int):
+            self.__error(
+                f"{key} value '{value}' is not a valid logging level, e.g. debug|info|warning|error."
+            )
+        return level
+
+    def __load_size(
+        self,
+        config: Dict,  # The raw config from the filesystem.
+        key: str,  # The key to read from the config.
+        bit_or_byte: str,  # If the value being read should be in bits or bytes.
+        is_rate: bool = False,  # If the value being read should be a straight value or rate per second.
+    ) -> int:
+        """Loads a byte string (1KiB, 2MiB, 3GiB, ...) as an integer number
+        of bytes from the config."""
+        value = self.__load_string(config, key)
+        # Value is correct format
+        match = BYTE_REGEX.fullmatch(value)
+        if match is None:
+            self.__error(f"{key} value '{value}' is not a valid bit or byte value.")
+        # Is bits or bytes
+        assert bit_or_byte in ("bit", "byte")
+        if bit_or_byte == "bit" and match.group("bit_or_byte") == "B":
+            self.__error(
+                f"{key} value '{value}' is a byte value instead of a bit value (B vs b)."
+            )
+        elif bit_or_byte == "bit" and match.group("bit_or_byte") != "b":
+            self.__error(
+                f"{key} value '{value}' is a bit value instead of a byte value (b vs B)."
+            )
+        # Is rate
+        if is_rate and not match.group("rate"):
+            self.__error(f"{key} value '{value}' is not a rate.")
+        elif not is_rate and match.group("rate"):
+            self.__error(f"{key} value '{value}' is a rate.")
+        # Convert to int
+        return int(match.group("number")) * BYTE_MULTIPLIER[match.group("multiplier")]
+
+    def __load_path(
+        self,
+        config: Dict,  # The raw config from the filesystem.
+        key: str,  # The key to read from the config.
+        exists: bool = True,  # If the path should exist or not.
+        extension: str = None,  # The expected extension.
+        path_type: str = "any",  # If the path should be a file or directory.
+    ) -> pathlib.Path:
+        """Loads a path from the config."""
+        # Load value as a string and convert to path
+        value = self.__load_string(config, key)
+        path = pathlib.Path(value)
+
+        assert path_type in ("file", "dir", "any")
+
+        if not path.is_absolute():
+            self.__error(f"{key} value '{value}' is not an absolute path.")
+        elif exists and not path.exists():
+            self.__error(f"{key} value '{value}' does not exist.")
+        elif not exists and path.exists():
+            self.__error(f"{key} value '{value}' exists.")
+        elif extension is not None and path.suffix != extension:
+            self.__error(f"{key} value '{value}' does not end in '.{extension}'.")
+        elif path_type == "file" and not path.is_file():
+            self.__error(f"{key} value '{value}' is not a file.")
+        elif path_type == "dir" and not path.is_dir():
+            self.__error(f"{key} value '{value}' is not a directory.")
+
+        return path
+
+    def __error(self, s: str) -> None:
+        """Raises an error and exits."""
+        print(f"Config error in {self.__config_path}: {s}")
+        sys.exit(1)
+
+
+######################
+# Filesystem mapping #
+######################
+
+
+class Tree:
+    """An oversimplification of a filesystem tree."""
+
+    __BYTE_WIDTH = 12
+    __COUNT_WIDTH = 8
+
+    def __init__(self) -> "Tree":
+        self.__section_paths = set()
+        self.__logger = logging.getLogger("Tree         ")
+        self.__logger.info("Loading backup tree...")
+
+        # Iterate though every path, working from the deepest dir to the root
+        self.__nodes = {}
+        for subpath, dirs, files in CONFIG.local_backup_path.walk(top_down=False):
+            # Convert to paths
+            dirs = [subpath / d for d in sorted(dirs)]
+            files = [subpath / f for f in sorted(files)]
+
+            # Add files first, then add the node for the current directory
+            for file in files:
+                self.__nodes[file] = TreeNode(file, self.__getitem__)
+            self.__nodes[subpath] = TreeNode(subpath, self.__getitem__, dirs, files)
+
+        # Set root and make it a section
+        self.root = self.__nodes[CONFIG.local_backup_path]
+        self.__create_section(self.root)
+
+    def __getitem__(self, path: TreeNodeish) -> TreeNode | None:
+        """Returns a node in the tree."""
+        return self.__nodes[self.__to_path(path)]
+
+    def __contains__(self, path: TreeNodeish) -> bool:
+        """Returns if the tree contains a path."""
+        return self.__to_path(path) in self.__nodes
+
+    def get_sections(self) -> SectionFiles:
+        """The section paths within the tree."""
+        self.__logger.info("Organizing files into sections...")
+        sections = {}
+        for path in self.__section_paths:
+            sections[path] = set()
+        for node in self.__nodes.values():
+            if node.is_file:
+                sections[node.section_root.path].add(node.path)
+
+        # Show the final results.
+        self.__logger.info("Final sections:")
+        for path in sorted(self.__section_paths):
+            relative_path = path.relative_to(CONFIG.local_backup_path)
+            size = self[path].section_size
+            file_count = len(sections[path])
+            self.__logger.info(f"{size} bytes", f"{file_count} files", relative_path)
+        self.__logger.info("")
+
+        return sections
+
+    def create_sections(
+        self,
+        paths: Iterable[TreeNodeish],  # The paths to add.
+        ignore_missing: bool,  # If missing paths should be ignored.
+    ) -> None:
+        """Creates multiple sections in the tree. If any given path does not exist"""
+        for path in paths:
+            if path in self:
+                self.__create_section(path)
+            elif not ignore_missing:
+                raise RuntimeError(f"Cannot add section at nonexistent node {path}.")
+
+    def balance_sections(self) -> None:
+        """Balances the sections in the tree."""
+        self.__logger.info("Rebalancing sections...")
+        # Balance nodes by splitting, then collapsing
+        self.__split_sections()
+        self.__collapse_sections()
+        self.__logger.info("")
+
+    def __split_sections(self) -> None:
+        """Splits sections in the tree that are too large."""
+        to_split = set(self[x] for x in self.__section_paths)
+
+        while to_split:
+            # Choose the next node to balance (furthest from root first, then alphabetical)
+            node = min(to_split, key=lambda x: (-len(x.path.parents), str(x.path)))
+            relative_path = node.path.relative_to(self.root.path)
+            to_split.remove(node)
+
+            # Done shrinking if it's a file.
+            if node.is_file:
+                self.__logger.info(
+                    f"{node.section_size} bytes",
+                    relative_path,
+                    "",
+                    "Can't split section because it's a file",
+                )
+                continue
+
+            # Done shrinking if it's below the maximum size.
+            if node.section_size < CONFIG.desired_tar_size_max:
+                self.__logger.info(
+                    f"{node.section_size} bytes",
+                    relative_path,
+                    "",
+                    f"Won't split section because it's smaller than {CONFIG.desired_tar_size_max} bytes",
+                )
+                continue
+
+            # Done shrinking if it doesn't have an eligible node to split on
+            split_node = self.__get_split_node(node)
+            if split_node is None:
+                self.__logger.info(
+                    f"{node.section_size} bytes",
+                    relative_path,
+                    "",
+                    "Can't split section because there isn't an eligible node to split on",
+                )
+                continue
+            split_relative_path = split_node.path.relative_to(self.root.path)
+
+            # Create new section that would roughly split the section in half.
+            self.__logger.info(
+                f"{node.section_size} bytes",
+                relative_path,
+                "Changed!",
+                f"Splitting at {split_relative_path}",
+            )
+            self.__create_section(split_node)
+            to_split.add(node)
+            to_split.add(split_node)
+
+    def __collapse_sections(self) -> None:
+        """Collapse sections in the tree that are too small."""
+        to_collapse = set(self[x] for x in self.__section_paths)
+
+        while to_collapse:
+            # Choose the next node to balance (furthest from root first, then alphabetical)
+            node = min(to_collapse, key=lambda x: (-len(x.path.parents), str(x.path)))
+            relative_path = node.path.relative_to(self.root.path)
+            to_collapse.remove(node)
+
+            # Check if it's large enough
+            if node.section_size > CONFIG.desired_tar_size_min:
+                self.__logger.info(
+                    f"{node.section_size} bytes",
+                    relative_path,
+                    "",
+                    f"Won't collapse section because it's larger than {CONFIG.desired_tar_size_min} bytes",
+                )
+                continue
+
+            # Check if it has a parent section
+            parent_section = node.parent_section_root
+            if parent_section is None:
+                self.__logger.info(
+                    f"{node.section_size} bytes",
+                    relative_path,
+                    "",
+                    "Can't collapse section because it doesn't have a parent section",
+                )
+                continue
+
+            # Check if the current + the parent section size would be too large.
+            if (
+                node.section_size + parent_section.section_size
+                > CONFIG.desired_tar_size_max
+            ):
+                self.__logger.info(
+                    f"{node.section_size} bytes",
+                    relative_path,
+                    "",
+                    f"Won't collapse section because its size + the parent section size ({parent_section.section_size} bytes) is larger than {CONFIG.desired_tar_size_max} bytes",
+                )
+                continue
+
+            # Remove the section
+            self.__logger.info(
+                f"{node.section_size} bytes",
+                relative_path,
+                "Changed!",
+                f"Collapsing into {parent_section.path}",
+            )
+            self.__delete_section(node)
+
+    def __get_split_node(self, node: TreeNode) -> TreeNode | None:
+        """Returns the TreeNode that contains about half of the current node's size."""
+        section_root = node
+        if section_root.is_file:
+            raise RuntimeError("Cannot get split node of a file.")
+
+        # Follow the line of largest eligible children until we find one that's
+        # smaller than the current (i.e. splitting here will not result in a
+        # 0-byte section)
+        curr_node = section_root.largest_eligible_child
+        while True:
+            # If we reached dead end without the size shrinking, then there's no point
+            # to split within this node.
+            if curr_node is None:
+                return None
+            # If we find a child node that's smaller than the current, then splitting
+            # is possible.
+            if curr_node.section_size < section_root.section_size:
+                break
+            # Otherwise, keep digging deeper
+            curr_node = curr_node.largest_eligible_child
+
+        # Find the largest eligible child that approx. takes up half as much space
+        # as the parent.
+        while True:
+            # Select the current node if it's a file
+            if curr_node.is_file:
+                split_node = curr_node
+                break
+
+            next_node = curr_node.largest_eligible_child
+            # Select the current node if there isn't a next node
+            if next_node is None:
+                split_node = curr_node
+                break
+
+            # Keep searching if the next node is still larger than half the current node's size
+            if next_node.section_size * 2 > section_root.section_size:
+                curr_node = next_node
+                continue
+
+            # Choose the next node if the current node is too large
+            if curr_node.section_size > CONFIG.max_tar_size:
+                split_node = next_node
+                break
+
+            # Choose the current node if current size is closer to half than the next node's size
+            curr_diff = abs(curr_node.section_size * 2 - section_root.section_size)
+            next_diff = abs(next_node.section_size * 2 - section_root.section_size)
+            if curr_diff < next_diff:
+                split_node = curr_node
+                break
+
+            # Otherwise, choose the next node
+            split_node = next_node
+            break
+
+        return split_node
+
+    def __create_section(self, path: TreeNodeish) -> None:
+        """Creates a section at a given node."""
+        node = self.__to_node(path)
+        if node.is_section_root:
+            if node.is_root:
+                return
+            raise RuntimeError(
+                f"Cannot create section. Node at {node.path} is already a section root."
+            )
+        node.is_section_root = True
+        self.__section_paths.add(node.path)
+
+        # Reduce section size of each parent in the above section by the new section size
+        parent = node.parent
+        while parent is not None:
+            parent.section_size -= node.section_size
+            if parent.is_section_root:
+                break
+            parent = parent.parent
+
+    def __delete_section(self, path: TreeNode) -> None:
+        """Deletes a section at a given node."""
+        node = self.__to_node(path)
+        if node.is_root:
+            raise RuntimeError(
+                f"Cannot delete section. Node at {node.path} is the root."
+            )
+        elif not node.is_section_root:
+            raise RuntimeError(
+                f"Cannot delete section. Node at {node.path} is not a section root."
+            )
+        node.is_section_root = False
+        self.__section_paths.remove(node.path)
+
+        # Increase section size of each parent in the above section by the old section size
+        parent = node.parent
+        while parent is not None:
+            parent.section_size += node.section_size
+            if parent.is_section_root:
+                break
+            parent = parent.parent
+
+    def __to_path(self, x: TreeNodeish) -> pathlib.Path:
+        """Converts a string, path, or node to a path."""
+        if isinstance(x, str):
+            return self[pathlib.Path(x)]
+        elif isinstance(x, pathlib.Path):
+            return x
+        elif isinstance(x, TreeNode):
+            return x.path
+        else:
+            raise RuntimeError(f"Cannot convert {x} to a path.")
+
+    def __to_node(self, x: TreeNodeish) -> TreeNode:
+        """Converts a string, path, or node to a node."""
+        if isinstance(x, str):
+            node = self[pathlib.Path(x)]
+            if node is None:
+                raise KeyError(f"Node {x} does not exist.")
+            return node
+        elif isinstance(x, pathlib.Path):
+            node = self[x]
+            if node is None:
+                raise KeyError(f"Node {x} does not exist.")
+            return node
+        elif isinstance(x, TreeNode):
+            return x
+        else:
+            raise RuntimeError(f"Cannot convert {x} to a path.")
+
+
+class TreeNode:
+    """An oversimplification of a node in a filesystem tree."""
+
+    def __init__(
+        self,
+        path: pathlib.Path,  # The path to the node.
+        node_lookup: Callable[
+            [pathlib.Path], "TreeNode"
+        ],  # A function to lookup other TreeNodes.
+        dirs: Iterable[pathlib.Path] = tuple(),  # The child directories of the node.
+        files: Iterable[pathlib.Path] = tuple(),  # The files of the node.
+    ) -> "TreeNode":
+        self.path = path.absolute()
+        self.parent_path = self.path.parent
+        self.__node_lookup = node_lookup
+
+        if self.path.is_file():
+            self.type = "file"
+            self.size = self.path.stat().st_size
+            self.dirs = None
+            self.files = None
+
+        elif self.path.is_dir():
+            self.type = "dir"
+            self.dirs = tuple(self.__node_lookup(d) for d in dirs)
+            self.files = tuple(self.__node_lookup(f) for f in files)
+            self.files_and_dirs = self.files + self.dirs
+            self.size = sum(d.size for d in self.dirs) + sum(f.size for f in self.files)
+
+        else:
+            raise ValueError(f"Unknown node type at {self.path}")
+
+        self.is_section_root = False
+        self.section_size = self.size
+
+    @property
+    def is_root(self) -> bool:
+        """If the node is the root node or not."""
+        return self.parent is None
+
+    @property
+    def is_file(self) -> bool:
+        """If the node is a file or not."""
+        return self.type == "file"
+
+    @property
+    def is_dir(self) -> bool:
+        """If the node is a directory or not."""
+        return self.type == "dir"
+
+    @property
+    def parent(self) -> "TreeNode":
+        """The parent of the Node."""
+        try:
+            return self.__node_lookup(self.parent_path)
+        except KeyError:
+            return None
+
+    @property
+    def section_root(self) -> "TreeNode":
+        """The root of the section the node is in."""
+        node = self
+        while node is not None and not node.is_section_root:
+            node = node.parent
+        return node
+
+    @property
+    def parent_section_root(self) -> "TreeNode":
+        """The root of the section that contains the section the node is in."""
+        # Get the root of this section
+        section_root = self.section_root
+        if section_root is None:
+            return None
+        # Then get the parent of that section root
+        section_root_parent = section_root.parent
+        if section_root_parent is None:
+            return None
+        # Then get the root of the section that contains that parent
+        return section_root_parent.section_root
+
+    @property
+    def is_eligible_section_root(self) -> bool:
+        """If the node is eligable to become a section root."""
+        # Can't become a section if it's already one
+        if self.is_section_root:
+            return False
+        # If it's a file that is smaller than the desired size...
+        if self.type == "file" and self.size < CONFIG.desired_tar_size_min:
+            # It can be a section, but only if the parent is larger than the
+            # hard maximum.
+            return self.parent.section_size > CONFIG.max_tar_size
+        # Otherwise, yes!
+        return True
+
+    def children(
+        self,
+        sorted_by: str = "alpha",  # The method the children should be sorted by. Supports "alpha", "size", and "section_size".
+        reverse=False,  # If the children should be sorted in reverse order.
+        section_eligible_only=False,  # Set to True to only return children that could become a section root.
+        include_dirs: bool = True,  # If child directories should be included.
+        include_files: bool = True,  # If files should be included.
+    ) -> List[TreeNode]:
+        """Yields the children of the node."""
+        if self.is_file:
+            raise RuntimeError("Cannot get child of a file.")
+
+        # Pick files, dirs, or files and dirs
+        if include_dirs and include_files:
+            children = self.files_and_dirs
+        elif include_dirs:
+            children = self.dirs
+        elif include_files:
+            children = self.files
+
+        # Filter if needed
+        if section_eligible_only:
+            children = [x for x in children if x.is_eligible_section_root]
+
+        # Figure out how to compare them to each other
+        match sorted_by:
+            case "alpha":
+                key = lambda x: x.path
+            case "size":
+                key = lambda x: x.size
+            case "section_size":
+                key = lambda x: x.section_size
+            case _:
+                raise RuntimeError(f"Unrecognized sorted_by type: {sorted_by}")
+
+        # Return!
+        return sorted(children, key=key, reverse=reverse)
+
+    @property
+    def largest_eligible_child(self) -> TreeNode | None:
+        """The largest subdirectory of the node that's in the same section."""
+        if self.is_file:
+            return None
+        children = self.children(
+            "section_size", reverse=True, section_eligible_only=True
+        )
+        if len(children) == 0:
+            return None
+        return children[0]
+
+    def __repr__(self) -> str:
+        """Converts the object to a string."""
+        lines = [
+            f"{self.path}:\n",
+            # f"parent:       {self.parent.path}\n" if self.parent is not None else "",
+            f"type:         {self.type}\n",
+            f"size:         {self.size}\n",
+            f"section size: {self.section_size}\n",
+            f"section root: {self.is_section_root}\n",
+            f"dirs:         {len(self.dirs)}\n" if self.dirs is not None else "",
+            f"files:        {len(self.files)}\n" if self.files is not None else "",
+            "",
+        ]
+        return "".join(lines)
+
+
+##################
+# Tar management #
+##################
+
+
+class BackupManager:
+    """A manager of the backup tars."""
+
+    def __init__(self) -> "BackupManager":
+        self.__logger = logging.getLogger("BackupManager")
+        self.__sections = None
+        self.__successful_uploads = None
+        self.__previous_checksums = {}
+        self.__current_checksums = {}
+        self.__uploaded_checksums = {}
+        self.__load_previous_checksums()
+
+    @property
+    def previous_sections(self) -> List[Section]:
+        """Returns a list of tar locations."""
+        return list(self.__previous_checksums.keys())
+
+    def set_sections(self, sections: SectionFiles) -> None:
+        """Sets what sections the manager should control."""
+        self.__sections = sections
+
+    def __load_previous_checksums(self) -> None:
+        """Loads the previous run metadata."""
+        self.__logger.info("Loading previous tar data...")
+
+        # Load checksums
+        if not CONFIG.local_checksums_path.exists():
+            self.__logger.warning("No tar data found, assuming first run.")
+            return
+        checksums = json.loads(CONFIG.local_checksums_path.read_text())
+
+        # Ensure correct format
+        assert isinstance(checksums, dict)
+        for section, checksum in checksums.items():
+            assert isinstance(section, str)
+            assert isinstance(checksum, str) or checksum is None
+
+        # Convert to pathlib.Path
+        self.__previous_checksums = {pathlib.Path(s): c for s, c in checksums.items()}
+
+    def __save_checksums(self, header: Any) -> None:
+        """Saves checksums for comparison in future runs."""
+        self.__logger.info(
+            header, f"Saving checksum data to {CONFIG.local_checksums_path}..."
+        )
+
+        # Get either the current or previous checksum of each section, if there
+        # is one.
+        checksums = {}
+        for section in self.__sections.keys():
+            if section in self.__uploaded_checksums:
+                checksums[str(section)] = self.__uploaded_checksums[section]
+            elif section in self.__previous_checksums:
+                checksums[str(section)] = self.__previous_checksums[section]
+            else:
+                checksums[str(section)] = None
+
+        # Save it.
+        CONFIG.local_checksums_path.write_text(
+            json.dumps(checksums, indent=2, sort_keys=True)
+        )
+
+    def sync_sections(self) -> None:
+        """Syncs the sections managed by this class."""
+        unchanged, changed = self.__compute_checksums()
+
+        # Extend locks on unchanged sections
+        if unchanged:
+            self.__logger.info("Extending locks on unchanged sections...")
+            for section in sorted(unchanged):
+                relative_path = section.relative_to(CONFIG.local_backup_path)
+                paths = self.__get_section_paths(section)
+                extend_s3_lock(relative_path, CONFIG.s3_bucket, paths["s3_path"])
+            self.__logger.info("")
+
+        # Upload new/updated sections
+        if changed:
+            self.__logger.info("Uploading new and changed sections...")
+            for section in sorted(changed):
+                self.__upload_section(section)
+            self.__logger.info("")
+
+        # Upload checksum metadata.
+        self.__upload_checksums()
+
+    def __compute_checksums(self) -> Tuple[SectionFiles, SectionFiles]:
+        """Computes the checksum for each section and returns the set of
+        unchanged and changed sections."""
+        self.__logger.info("Computing section checksums...")
+        for section, files in sorted(self.__sections.items()):
+            relative_path = section.relative_to(CONFIG.local_backup_path)
+            self.__current_checksums[section] = compute_checksum(relative_path, files)
+        self.__logger.info("")
+
+        self.__logger.info("Checksum results:")
+        unchanged = set()
+        changed = set()
+        for section, current_checksum in sorted(self.__current_checksums.items()):
+            relative_path = section.relative_to(CONFIG.local_backup_path)
+            previous_checksum = self.__previous_checksums.get(section) or "________"
+            comparison = f"{previous_checksum[:8]} > {current_checksum[:8]}"
+            # New section (didn't exist previously)
+            if previous_checksum == "________":
+                self.__logger.info("New      ", comparison, relative_path)
+                changed.add(section)
+            # Modified section (checksum is different)
+            elif current_checksum != previous_checksum:
+                self.__logger.info("Modified ", comparison, relative_path)
+                changed.add(section)
+            # Unchanged section (checksum is same)
+            else:
+                self.__logger.info("Unchanged", comparison, relative_path)
+                unchanged.add(section)
+        self.__logger.info("")
+
+        return unchanged, changed
+
+    def __get_section_paths(self, section: Section) -> Dict[str, str]:
+        """Returns a dictionary of every path related to a section upload."""
+        marker = self.__current_checksums[section][:8]
+        basename = f"backup_{marker}"
+        return {
+            "original_files": self.__sections[section],
+            "unencrypted_tar_path": TEMP_PATH / f"{basename}.tar",
+            "encrypted_tar_path": TEMP_PATH / f"{basename}.tar.gpg",
+            "s3_path": f"{CONFIG.s3_subpath}/{basename}.tar.gpg",
+        }
+
+    def __upload_section(
+        self,
+        section: Section,  # The path of the section to upload.
+    ) -> None:
+        """Uploads a single section to AWS."""
+        relative_path = section.relative_to(CONFIG.local_backup_path)
+        paths = self.__get_section_paths(section)
+
+        # Delete files if they already exist
+        paths["unencrypted_tar_path"].unlink(missing_ok=True)
+        paths["encrypted_tar_path"].unlink(missing_ok=True)
+
+        # Build the encrypted file
+        create_tar(
+            relative_path, paths["original_files"], paths["unencrypted_tar_path"]
+        )
+        encrypt_file(
+            relative_path, paths["unencrypted_tar_path"], paths["encrypted_tar_path"]
+        )
+        upload_file_to_s3(
+            relative_path,
+            paths["encrypted_tar_path"],
+            CONFIG.s3_bucket,
+            paths["s3_path"],
+        )
+
+        # Cleanup files
+        paths["unencrypted_tar_path"].unlink(missing_ok=True)
+        paths["encrypted_tar_path"].unlink(missing_ok=True)
+
+        # Save metadata
+        self.__uploaded_checksums[section] = self.__current_checksums[section]
+        self.__save_checksums(relative_path)
+
+    def __upload_checksums(self) -> None:
+        """Uploads the checksums to s3 for backup."""
+        self.__logger.info("Uploading checksum data...")
+        # Figure out paths and delete old files if they exist
+        encrypted_path = TEMP_PATH / "checksums.json"
+        encrypted_path.unlink(missing_ok=True)
+
+        # Encrypt and upload it
+        encrypt_file("checksums", CONFIG.local_checksums_path, encrypted_path)
+        upload_file_to_s3(
+            "checksums",
+            encrypted_path,
+            CONFIG.s3_bucket,
+            f"{CONFIG.s3_subpath}/checksums.json.gpg",
+        )
+
+        # Cleanup
+        encrypted_path.unlink(missing_ok=True)
+        self.__logger.info("")
+
+
+##############
+# Filesystem #
+##############
+
+
+def compute_checksum(
+    marker: Any,  # A marker to log the operation under.
+    files: Iterable[File],  # The files being scanned.
+) -> str:
+    """Computes the collective hash of file metadata and contents."""
+    LOGGER.info(marker, f"Computing checksum of {len(files)} files...")
+    # Compute hash of every file
+    hash_sha256 = hashlib.sha256()
+    for path in sorted(files):
+        hash_sha256.update(str(path).encode())
+        if CONFIG.checksum_method == "metadata":
+            hash_sha256.update(str(path.stat().st_mtime).encode())
+        elif CONFIG.checksum_method == "content":
+            with open(path, "rb") as file:
+                # Process only 4KiB at a time to reduce memory overhead
+                for chunk in iter(lambda: file.read(4096), b""):
+                    hash_sha256.update(chunk)
+        else:
+            raise RuntimeError(f"Unexpected checksum method {CONFIG.checksum_method}")
+    # Log the hash with the marker
+    return hash_sha256.hexdigest()
+
+
+def create_tar(
+    marker: Any,  # A marker to log the operation under.
+    files: Iterable[File],  # The paths of the files that belong to the section.
+    tar_path: File,  # The path of the tar file to create.
+) -> None:
+    """Creates an unencrypted tar of a section of files."""
+    LOGGER.info(marker, f"Packaging files into {tar_path}...")
+    with tarfile.open(tar_path, mode="x") as tar_file:
+        for file in sorted(files):
+            tar_file.add(file)
+
+
+def encrypt_file(
+    marker: Any,  # A marker to log the operation under.
+    in_file: File,  # The file to encrypt.
+    out_file: File,  # The file to write the encrypted contents to.
+) -> None:
+    """Encrypts a file via a command."""
+    LOGGER.info(marker, f"Encrypting {in_file} into {out_file}...")
+    run_command(
+        (
+            "gpg",
+            "--hidden-recipient",
+            CONFIG.gpg_encryption_key,
+            "--output",
+            str(out_file),
+            "--encrypt",
+            str(in_file),
+        )
+    )
+
+
+######
+# S3 #
+######
+
+
+def upload_file_to_s3(
+    marker: Any,  # A marker to log the operation under.
+    local_path: File,  # The path of the tar to upload.
+    s3_bucket: str,  # The name of the bucket.
+    s3_path: str,  # The path to the file within the bucket.
+) -> None:
+    """Uploads an encrypted tar to AWS S3."""
+    s3_url = f"s3://{CONFIG.s3_bucket}/{s3_path}"
+    expected_upload_seconds = local_path.stat().st_size / CONFIG.s3_upload_speed
+    expected_upload_time = seconds_to_human_timeframe(expected_upload_seconds)
+    LOGGER.info(
+        marker,
+        f"Uploading {local_path} to {s3_url}..."
+        f" (Expected upload time: {expected_upload_time})",
+    )
+    CONFIG.s3_client.upload_file(
+        local_path,
+        CONFIG.s3_bucket,
+        s3_path,
+        Config=CONFIG.s3_transfer_config,
+    )
+
+
+def extend_s3_lock(
+    marker: Any,  # A marker to log the operation under.
+    s3_bucket: str,  # The name of the bucket.
+    s3_path: str,  # The path to the file within the bucket.
+) -> None:
+    """Extends the s3 lock on a section."""
+    s3_url = f"s3://{s3_bucket}/{s3_path}"
+    LOGGER.info(marker, f"Extending lock on {s3_url} by {CONFIG.s3_lock_days} days...")
+    delta = datetime.timedelta(days=CONFIG.s3_lock_days)
+    date = datetime.datetime.now(datetime.timezone.utc) + delta
+    CONFIG.s3_client.put_object_retention(
+        Bucket=s3_bucket,
+        Key=s3_path,
+        Retention={"Mode": "COMPLIANCE", "RetainUntilDate": date},
+    )
+
+
+########
+# Misc #
+########
+
+
+class TableFormatter(logging.Formatter):
+    """A class for logging dynamic tabular data."""
+
+    def __init__(self, default_separator="-") -> "TableFormatter":
+        super().__init__()
+        self.__size = None
+        self.__types = None
+        self.__default_separator = default_separator
+
+    def format(self, record: logging.LogRecord) -> str:
+        """A table-friendly log formatter."""
+        log_time = datetime.datetime.now(datetime.timezone.utc)
+        time_str = f"{log_time.isoformat().replace('+00:00', 'Z')}"
+
+        # Use .msg if there weren't any args, otherwise make it a list.
+        if len(record.args) == 0:
+            raw_msg = record.msg
+        else:
+            raw_msg = [record.msg]
+            raw_msg.extend(record.args)
+
+        # If it's iterable, format it as a table.
+        if isinstance(raw_msg, list) or isinstance(raw_msg, tuple):
+            message = self.format_table(raw_msg)
+        else:
+            self.__size = None  # Forget previous table info
+            message = str(raw_msg)
+
+        return f"{time_str}: {message}"
+
+    def format_table(self, items: Iterable[Any]) -> str:
+        """Formats a list of items as table columns in the log."""
+        items = list(items)
+        item_strings = [str(x) for x in items]
+        self.__sync_table_settings(items, item_strings)
+
+        strings = []
+        for i, (x, x_str) in enumerate(zip(items, item_strings)):
+            # Figure out width
+            width = max(self.__widths[i], len(x_str))
+            self.__widths[i] = width
+            # Figure out justification
+            if i + 1 == len(items) or isinstance(x, pathlib.Path):
+                justification = "<"
+            else:
+                justification = ">"
+            # Format the item
+            strings.append(f"{x_str: {justification}{width}}")
+
+        return " - ".join(strings)
+
+    def set_table_hint(
+        self,
+        size: int,  # The number of columns in the table.
+        widths: None | int | List[int] = None,  # The width of each columns
+        separators: (
+            None | str | List[str]
+        ) = None,  # The separator or separators to use between each column.
+        types: None | Any | List[Any] = None,  # The types of each column.
+    ) -> None:
+        """Gives a hint for table formatting to the logger."""
+        self.__size = size
+
+        # Widths
+        if widths is None:
+            self.__widths = [0] * size
+        elif isinstance(widths, int):
+            self.__widths = [widths] * size
+        elif isinstance(widths, tuple) or isinstance(widths, list):
+            if len(widths) != size:
+                raise ValueError(
+                    f"Widths hint is incorrect length, {len(widths)} instead of expected {size}."
+                )
+            self.__widths = list(widths)
+        else:
+            raise ValueError(f"Unsupported widths type {type(widths)}.")
+
+        # Separators
+        if separators is None:
+            self.__separators = [self.__default_separator] * size
+        elif isinstance(separators, str):
+            self.__separators = [separators] * size
+        elif isinstance(separators, tuple) or isinstance(separators, list):
+            if len(separators) != size - 1:
+                raise ValueError(
+                    f"Separators hint is incorrect length, {len(separators)} instead of expected {size - 1}."
+                )
+            self.__separators = list(separators)
+        else:
+            raise ValueError(f"Unsupported separators type {type(separators)}.")
+
+        # Types
+        if types is None:
+            self.__types = None
+        elif isinstance(types, tuple) or isinstance(types, list):
+            if len(types) != size:
+                raise ValueError(
+                    f"Types hint is incorrect length, {len(types)} instead of expected {size}."
+                )
+            self.__types = list(types)
+        else:
+            self.__types = [types] * size
+
+    def __sync_table_settings(
+        self,
+        row: List[Any],  # The items in the row.
+        row_strings: List[str],  # The items in the row, converted to strings.
+    ) -> None:
+        """Checks if the current table settings match a row. If they don't
+        match, the table settings are updated to match the row by calling
+        self.set_table_hint()"""
+        # Get type of each item
+        types = [type(x) for x in row]
+        # Update our types if we don't have that hint yet
+        if self.__types is None:
+            self.__types = types
+
+        # Skip if the width and types align
+        if len(row) == self.__size and types == self.__types:
+            return
+
+        # Ensure we were given good info
+        assert len(row) == len(row_strings)
+        assert all(isinstance(x, str) for x in row_strings)
+
+        # Compute the width of each item in the row
+        widths = [len(x) for x in row_strings]
+        # Update the table widths to match
+        self.set_table_hint(len(row), widths=widths, types=types)
+
+
+def run_command(command: Iterable[str]) -> Tuple[str, str]:
+    """Runs a command and returns stdout and stderr of ."""
+    process = subprocess.run(
+        command,  # The command we're running
+        text=True,  # The output will be text
+        stdout=subprocess.PIPE,  # Capture stdout
+        stderr=subprocess.STDOUT,  # Capture stderr
+    )
+    if process.returncode != 0:
+        command_str = " ".join(command)
+        raise RuntimeError(
+            f"""Failed to execute command: {command_str}
+
+output:
+{process.stdout}
+"""
+        )
+    return process.stdout or "", process.stderr or ""
+
+
+def seconds_to_human_timeframe(s: int | float) -> str:
+    """Converts an integer number of seconds to a human-readable format."""
+    s = int(s)
+    assert s >= 0
+    if s == 0:
+        return "0 seconds"
+
+    components = []
+
+    days, remainder = divmod(s, 86400)
+    if days == 1:
+        components.append(f"{days} day")
+    elif days > 1:
+        components.append(f"{days} days")
+
+    hours, remainder = divmod(remainder, 3600)
+    if hours == 1:
+        components.append(f"{hours} hour")
+    elif hours > 1:
+        components.append(f"{hours} hours")
+
+    minutes, seconds = divmod(remainder, 60)
+    if minutes == 1:
+        components.append(f"{minutes} minute")
+    elif minutes > 1:
+        components.append(f"{minutes} minutes")
+
+    if seconds == 1:
+        components.append(f"{seconds} second")
+    elif seconds > 1:
+        components.append(f"{seconds} seconds")
+
+    return ", ".join(components)
+
+
+if __name__ == "__main__":
+    main()
