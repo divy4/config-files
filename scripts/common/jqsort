@@ -2,6 +2,7 @@
 set -euf -o pipefail
 
 for file in "$@"; do
-  cat <<< "$(cat "$file" | jq --sort-keys)" > "$file"
+  sorted="$(jq --sort-keys . "$file")"
+  echo "$sorted" > "$file"
   echo "Sorted $file"
 done
