@@ -53,7 +53,8 @@ if [[ -z "${DISPLAY:-}" ]]; then
 fi
 
 # fix gpg
-export GPG_TTY="$(tty)"
+GPG_TTY="$(tty)"
+export GPG_TTY
 if [ -n "$SSH_CONNECTION" ]; then
   export PINENTRY_USER_DATA="USE_CURSES=1"
 fi
@@ -96,7 +97,9 @@ case "$PROFILE_OS_ID" in
 esac
 
 
+
 ##### History #####
+
 case "$PROFILE_SHELL" in
 zsh)
   HISTFILE=~/.zsh_history
@@ -108,9 +111,9 @@ zsh)
     # Commands that start with spaces or have password flags
     # Commands that the line starts with
     # Commands that appear anywhere in a set of pipes
-    if [[ "$1" =~ "(^\s|--password|^\.config\s)" ]] \
-      || [[ "$1" =~ "^(sudo\s*)?(cd|clear|exit|ls|headphones|make|startx)\s" ]] \
-      || [[ "$1" =~ "^(.*\|\s*)?(sudo\s*)?(generate_password|gocryptfs|gpg)\s" ]]; then
+    if [[ "$1" =~ (^\\s|--password|^\\.config(\\s|$)) ]] \
+      || [[ "$1" =~ ^(sudo\\s*)?(cd|clear|exit|ls|headphones|make|startx)(\\s|$) ]] \
+      || [[ "$1" =~ ^(.*\\|\\s*)?(sudo\\s*)?(generate_password|gocryptfs|gpg)(\\s|$) ]]; then
         return 1
     else
         print -sr -- "${1%%$'\n'}"

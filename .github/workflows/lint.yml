@@ -1,0 +1,31 @@
+---
+name: lint
+
+"on":
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.13
+      - name: Install black
+        run: pip install black
+      - name: Black
+        run: |
+          grep --files-with-matches --recursive '^#!/.*python' . \
+          | grep --invert-match --fixed-strings '/.git/' \
+          | xargs --no-run-if-empty black --check --diff --color
+      - name: Shellcheck
+        run: |
+          grep --files-with-matches --recursive --perl-regexp \
+               '^#!/.*(sh|ash|bash|zsh)' . \
+          | grep --invert-match --fixed-strings '/.git/' \
+          | xargs --no-run-if-empty shellcheck --color
+      - run: yamllint --strict .
