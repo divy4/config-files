@@ -1,7 +1,10 @@
 {
+  "continue.telemetryEnabled": false,
+  "continue.enableTabAutocomplete": false,
   "cSpell.userWords": [
     "ansible",
     "BUILDKIT",
+    "crossplane",
     "Kubernetes",
     "lineinfile",
     "nonrotational",
@@ -44,5 +47,6 @@
   "terminal.integrated.shell.windows": "C:\\Program Files\\Git\\bin\\bash.exe",
   "vscode-yaml-sort.lineWidth": 80,
   "vscode-yaml-sort.noArrayIndent": true,
-  "window.title": "code"
+  "window.title": "code",
+  "workbench.startupEditor": "none"
 }

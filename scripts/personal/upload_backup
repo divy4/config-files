@@ -1188,13 +1188,11 @@ def run_command(command: Iterable[str]) -> Tuple[str, str]:
     )
     if process.returncode != 0:
         command_str = " ".join(command)
-        raise RuntimeError(
-            f"""Failed to execute command: {command_str}
+        raise RuntimeError(f"""Failed to execute command: {command_str}
 
 output:
 {process.stdout}
-"""
-        )
+""")
     return process.stdout or "", process.stderr or ""
 
 
