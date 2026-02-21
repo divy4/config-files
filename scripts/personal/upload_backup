@@ -147,7 +147,7 @@ class Config:
         """Checks the permissions of the config file."""
         owner = self.__config_path.owner()
         group = self.__config_path.group()
-        perms = self.__config_path.stat().st_mode
+        perms = self.__config_path.lstat().st_mode
         exp_owner = "root"
         exp_group = getpass.getuser()
         exp_perms = 0o100640
@@ -319,7 +319,7 @@ class Tree:
         for path in self.__section_paths:
             sections[path] = set()
         for node in self.__nodes.values():
-            if node.is_file:
+            if not node.is_dir:
                 sections[node.section_root.path].add(node.path)
 
         # Show the final results.
@@ -363,13 +363,13 @@ class Tree:
             relative_path = node.path.relative_to(self.root.path)
             to_split.remove(node)
 
-            # Done shrinking if it's a file.
-            if node.is_file:
+            # Done shrinking if it's not a directory.
+            if not node.is_dir:
                 self.__logger.info(
                     f"{node.section_size} bytes",
                     relative_path,
                     "",
-                    "Can't split section because it's a file",
+                    "Can't split section because it's a file or symbolic link",
                 )
                 continue
 
@@ -462,8 +462,8 @@ class Tree:
     def __get_split_node(self, node: TreeNode) -> TreeNode | None:
         """Returns the TreeNode that contains about half of the current node's size."""
         section_root = node
-        if section_root.is_file:
-            raise RuntimeError("Cannot get split node of a file.")
+        if not section_root.is_dir:
+            raise RuntimeError("Cannot get split node of a file or symbolic link.")
 
         # Follow the line of largest eligible children until we find one that's
         # smaller than the current (i.e. splitting here will not result in a
@@ -484,8 +484,8 @@ class Tree:
         # Find the largest eligible child that approx. takes up half as much space
         # as the parent.
         while True:
-            # Select the current node if it's a file
-            if curr_node.is_file:
+            # Select the current node if it's a file or symbolic link
+            if not curr_node.is_dir:
                 split_node = curr_node
                 break
 
@@ -607,7 +607,7 @@ class TreeNode:
 
         if self.path.is_file():
             self.type = "file"
-            self.size = self.path.stat().st_size
+            self.size = self.path.lstat().st_size
             self.dirs = None
             self.files = None
 
@@ -617,6 +617,12 @@ class TreeNode:
             self.files = tuple(self.__node_lookup(f) for f in files)
             self.files_and_dirs = self.files + self.dirs
             self.size = sum(d.size for d in self.dirs) + sum(f.size for f in self.files)
+
+        elif self.path.is_symlink():
+            self.type = "symlink"
+            self.size = 0
+            self.dirs = None
+            self.files = None
 
         else:
             raise ValueError(f"Unknown node type at {self.path}")
@@ -638,6 +644,11 @@ class TreeNode:
     def is_dir(self) -> bool:
         """If the node is a directory or not."""
         return self.type == "dir"
+
+    @property
+    def is_symlink(self) -> bool:
+        """If the node is a symbolic link or not."""
+        return self.type == "symlink"
 
     @property
     def parent(self) -> "TreeNode":
@@ -676,7 +687,7 @@ class TreeNode:
         if self.is_section_root:
             return False
         # If it's a file that is smaller than the desired size...
-        if self.type == "file" and self.size < CONFIG.desired_tar_size_min:
+        if self.type in ("file", "symlink") and self.size < CONFIG.desired_tar_size_min:
             # It can be a section, but only if the parent is larger than the
             # hard maximum.
             return self.parent.section_size > CONFIG.max_tar_size
@@ -692,8 +703,8 @@ class TreeNode:
         include_files: bool = True,  # If files should be included.
     ) -> List[TreeNode]:
         """Yields the children of the node."""
-        if self.is_file:
-            raise RuntimeError("Cannot get child of a file.")
+        if not self.is_dir:
+            raise RuntimeError("Cannot get child of a file or symbolic link.")
 
         # Pick files, dirs, or files and dirs
         if include_dirs and include_files:
@@ -724,7 +735,7 @@ class TreeNode:
     @property
     def largest_eligible_child(self) -> TreeNode | None:
         """The largest subdirectory of the node that's in the same section."""
-        if self.is_file:
+        if not self.is_dir:
             return None
         children = self.children(
             "section_size", reverse=True, section_eligible_only=True
@@ -953,7 +964,7 @@ def compute_checksum(
     for path in sorted(files):
         hash_sha256.update(str(path).encode())
         if CONFIG.checksum_method == "metadata":
-            hash_sha256.update(str(path.stat().st_mtime).encode())
+            hash_sha256.update(str(path.lstat().st_mtime).encode())
         elif CONFIG.checksum_method == "content":
             with open(path, "rb") as file:
                 # Process only 4KiB at a time to reduce memory overhead
@@ -1010,7 +1021,7 @@ def upload_file_to_s3(
 ) -> None:
     """Uploads an encrypted tar to AWS S3."""
     s3_url = f"s3://{CONFIG.s3_bucket}/{s3_path}"
-    expected_upload_seconds = local_path.stat().st_size / CONFIG.s3_upload_speed
+    expected_upload_seconds = local_path.lstat().st_size / CONFIG.s3_upload_speed
     expected_upload_time = seconds_to_human_timeframe(expected_upload_seconds)
     LOGGER.info(
         marker,
