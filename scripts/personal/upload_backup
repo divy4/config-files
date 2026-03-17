@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from typing import Any, Dict, List, Iterable, Set, Tuple
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 import boto3
 import boto3.s3.transfer
@@ -102,37 +102,45 @@ class Config:
         except json.decoder.JSONDecodeError as error:
             self.__error(error)
 
-        self.log_level = self.__load_log_level(config, "log_level")
-        self.checksum_method = self.__load_string(
+        self.log_level = self.__load(config, "log_level", "log level")
+        self.checksum_method = self.__load(
             config, "checksum_method", ["metadata", "content"]
         )
-        self.max_tar_size = self.__load_size(config, "max_tar_size", bit_or_byte="byte")
-        self.desired_tar_size = self.__load_size(
-            config, "desired_tar_size", bit_or_byte="byte"
+        self.max_tar_size = self.__load(
+            config, "max_tar_size", "size", bit_or_byte="byte"
+        )
+        self.desired_tar_size = self.__load(
+            config, "desired_tar_size", "size", bit_or_byte="byte"
         )
         self.desired_tar_size_min = int(self.desired_tar_size * 0.5)
         self.desired_tar_size_max = min(
             self.max_tar_size, int(self.desired_tar_size * 1.5)
         )
-        self.local_backup_path = self.__load_path(
-            config, "local_backup_path", path_type="dir"
+        self.local_backup_path = self.__load(
+            config, "local_backup_path", pathlib.Path, path_type="dir"
         )
-        self.local_checksums_path = self.__load_path(
-            config, "local_checksums_path", extension=".json", path_type="file"
+        self.local_checksums_path = self.__load(
+            config,
+            "local_checksums_path",
+            pathlib.Path,
+            extension=".json",
+            path_type="file",
         )
-        self.gpg_encryption_key = self.__load_string(config, "gpg_encryption_key")
-        self.s3_bucket = self.__load_string(config, "s3_bucket")
-        self.s3_subpath = self.__load_string(config, "s3_subpath")
-        self.s3_lock_days = self.__load_int(config, "s3_lock_days")
+        self.gpg_encryption_key = self.__load(config, "gpg_encryption_key", str)
+        self.s3_bucket = self.__load(config, "s3_bucket", str)
+        self.s3_subpath = self.__load(config, "s3_subpath", str)
+        self.s3_lock_days = self.__load(config, "s3_lock_days", int)
         self.s3_upload_speed = (
-            self.__load_size(config, "s3_upload_speed", bit_or_byte="bit", is_rate=True)
+            self.__load(
+                config, "s3_upload_speed", "size", bit_or_byte="bit", is_rate=True
+            )
             // 8
         )  # Convert to bytes/s
 
         # AWS session
         self.__session = boto3.Session(
-            aws_access_key_id=self.__load_string(config, "aws_access_key_id"),
-            aws_secret_access_key=self.__load_string(config, "aws_secret_access_key"),
+            aws_access_key_id=self.__load(config, "aws_access_key_id", str),
+            aws_secret_access_key=self.__load(config, "aws_secret_access_key", str),
         )
 
         # S3 client
@@ -168,103 +176,156 @@ class Config:
         elif perms != exp_perms:
             self.__error(f"File has incorrect permissions. {instructions}")
 
-    def __load_int(self, config: Dict, key: str) -> int:
-        """Loads an integer from the config."""
-        # Key exists
-        if key not in config:
-            self.__error(f"Missing {key}.")
-        value = config[key]
-        # Value is right type
-        if not isinstance(value, int):
-            self.__error(f"{key} value '{value}' is not an int.")
-        return value
+    # Value loaders
 
-    def __load_string(self, config: Dict, key: str, expected=None) -> str:
-        """Loads a string from the config."""
-        # Key exists
-        if key not in config:
-            self.__error(f"Missing {key}.")
-        value = config[key]
-        # Value is right type
-        if not isinstance(value, str):
-            self.__error(f"{key} value '{value}' is not a string.")
-        # Value doesn't match expected values
-        if expected and value not in expected:
-            self.__error(f"{key} value '{value}' is not one of {expected}.")
-        return value
-
-    def __load_log_level(self, config: Dict, key: str) -> int:
-        """Loads a log level from the config."""
-        value = self.__load_string(config, key)
-        # Value is correct format
-        level = logging.getLevelName(value.upper())
-        if not isinstance(level, int):
-            self.__error(
-                f"{key} value '{value}' is not a valid logging level, e.g. debug|info|warning|error."
-            )
-        return level
-
-    def __load_size(
+    def __load(
         self,
-        config: Dict,  # The raw config from the filesystem.
+        config: Dict,  # The config to load from.
+        key: str,  # The key within the config to read.
+        value_type: Any,  # The type of the value. Supports Any, int, str, pathlib.Path, "log level",
+        # "size" or a tuple of literal values.
+        is_list: bool = False,  # If the value being read is a list of that value type.
+        **type_specific_args,  # Type-specific args.
+    ) -> Any:
+        """Loads a value from the config."""
+        if not isinstance(value_type, Iterable):
+            assert value_type in (Any, int, str, pathlib.Path, "log level", "size")
+
+        # Generic value handling
+        if key not in config:
+            self.__error(f"Missing {key}.")
+        raw_value = config[key]
+
+        # Convert raw value
+        if is_list:
+            value = [
+                self.__convert_raw_value(
+                    f"{key}[{i}]", v, value_type, **type_specific_args
+                )
+                for i, v in enumerate(raw_value)
+            ]
+        else:
+            value = self.__convert_raw_value(
+                key, raw_value, value_type, **type_specific_args
+            )
+
+        # Print out the result
+        if key.startswith("aws_") or key.startswith("gpg_"):
+            print(f"Config value loaded: {key}=***")
+        elif str(raw_value) != str(value):
+            print(f"Config value loaded: {key}={value} ({raw_value})")
+        else:
+            print(f"Config value loaded: {key}={value}")
+        return value
+
+    def __convert_raw_value(
+        self,
+        key: str,  # The key of the value being read.
+        raw_value: Any,  # The raw value that was loaded.
+        value_type: Any,  # The expected type or enum of values the value can be.
+        **type_specific_args,  # Type-specific args.
+    ) -> Any:
+        """Converts a raw value to a formatted value."""
+        # Figure out what type the raw value should have and check it.
+        match value_type:
+            case pathlib.Path:
+                raw_value_type = str
+            case "log level":
+                raw_value_type = ("debug", "info", "warning", "error")
+            case "size":
+                raw_value_type = str
+            case _:
+                raw_value_type = value_type
+        self.__assert_type(key, raw_value, raw_value_type)
+
+        # Type-specific handing
+        match value_type:
+            case pathlib.Path:
+                value = self.__convert_path(key, raw_value, **type_specific_args)
+            case "log level":
+                value = logging.getLevelName(raw_value.upper())
+            case "size":
+                value = self.__convert_size(key, raw_value, **type_specific_args)
+            case _:
+                value = raw_value
+
+        return value
+
+    def __convert_path(
+        self,
+        key: str,  # The key the value was read from.
+        raw_value: str,  # The raw value.
+        exists: bool = True,  # If the path should exist or not.
+        extension: str = None,  # The expected extension.
+        path_type: str = "any",  # If the path should be a file or directory.
+    ) -> Any:
+        """Asserts the validity of a path."""
+        assert path_type in ("file", "dir", "any")
+
+        value = pathlib.Path(raw_value)
+
+        if not value.is_absolute():
+            self.__error(f"{key} value '{value}' is not an absolute path.")
+        elif exists and not value.exists():
+            self.__error(f"{key} value '{value}' does not exist.")
+        elif not exists and value.exists():
+            self.__error(f"{key} value '{value}' exists.")
+        elif extension is not None and value.suffix != extension:
+            self.__error(f"{key} value '{value}' does not end in '.{extension}'.")
+        elif path_type == "file" and not value.is_file():
+            self.__error(f"{key} value '{value}' is not a file.")
+        elif path_type == "dir" and not value.is_dir():
+            self.__error(f"{key} value '{value}' is not a directory.")
+
+        return value
+
+    def __convert_size(
+        self,
         key: str,  # The key to read from the config.
+        raw_value: str,  # The raw value.
         bit_or_byte: str,  # If the value being read should be in bits or bytes.
         is_rate: bool = False,  # If the value being read should be a straight value or rate per second.
     ) -> int:
         """Loads a byte string (1KiB, 2MiB, 3GiB, ...) as an integer number
         of bytes from the config."""
-        value = self.__load_string(config, key)
         # Value is correct format
-        match = BYTE_REGEX.fullmatch(value)
+        match = BYTE_REGEX.fullmatch(raw_value)
         if match is None:
-            self.__error(f"{key} value '{value}' is not a valid bit or byte value.")
+            self.__error(f"{key} value '{raw_value}' is not a valid bit or byte value.")
         # Is bits or bytes
         assert bit_or_byte in ("bit", "byte")
         if bit_or_byte == "bit" and match.group("bit_or_byte") == "B":
             self.__error(
-                f"{key} value '{value}' is a byte value instead of a bit value (B vs b)."
+                f"{key} value '{raw_value}' is a byte value instead of a bit value (B vs b)."
             )
         elif bit_or_byte == "bit" and match.group("bit_or_byte") != "b":
             self.__error(
-                f"{key} value '{value}' is a bit value instead of a byte value (b vs B)."
+                f"{key} value '{raw_value}' is a bit value instead of a byte value (b vs B)."
             )
         # Is rate
         if is_rate and not match.group("rate"):
-            self.__error(f"{key} value '{value}' is not a rate.")
+            self.__error(f"{key} value '{raw_value}' is not a rate.")
         elif not is_rate and match.group("rate"):
-            self.__error(f"{key} value '{value}' is a rate.")
+            self.__error(f"{key} value '{raw_value}' is a rate.")
         # Convert to int
         return int(match.group("number")) * BYTE_MULTIPLIER[match.group("multiplier")]
 
-    def __load_path(
+    # Assertions
+
+    def __assert_type(
         self,
-        config: Dict,  # The raw config from the filesystem.
-        key: str,  # The key to read from the config.
-        exists: bool = True,  # If the path should exist or not.
-        extension: str = None,  # The expected extension.
-        path_type: str = "any",  # If the path should be a file or directory.
-    ) -> pathlib.Path:
-        """Loads a path from the config."""
-        # Load value as a string and convert to path
-        value = self.__load_string(config, key)
-        path = pathlib.Path(value)
+        key: str,  # The key the value was read from.
+        value: Any,  # The value of the key.
+        expected_type: type | Iterable[Any],  # The expected type of the value.
+    ) -> None:
+        """Asserts the value type is correct."""
+        if isinstance(expected_type, Iterable):
+            if value not in expected_type:
+                self.__error(f"{key} value '{value}' is not one of {expected_type}.")
+        elif not isinstance(value, expected_type):
+            self.__error(f"{key} value '{value}' is not a {expected_type.__name__}.")
 
-        assert path_type in ("file", "dir", "any")
-
-        if not path.is_absolute():
-            self.__error(f"{key} value '{value}' is not an absolute path.")
-        elif exists and not path.exists():
-            self.__error(f"{key} value '{value}' does not exist.")
-        elif not exists and path.exists():
-            self.__error(f"{key} value '{value}' exists.")
-        elif extension is not None and path.suffix != extension:
-            self.__error(f"{key} value '{value}' does not end in '.{extension}'.")
-        elif path_type == "file" and not path.is_file():
-            self.__error(f"{key} value '{value}' is not a file.")
-        elif path_type == "dir" and not path.is_dir():
-            self.__error(f"{key} value '{value}' is not a directory.")
-
-        return path
+    # Helpers
 
     def __error(self, s: str) -> None:
         """Raises an error and exits."""
