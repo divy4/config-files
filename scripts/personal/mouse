@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+from collections.abc import Callable
+from openrazer.client.devices.mice import RazerMouse
+
+import argparse
+import openrazer.client
+import re
+import sys
+
+MIN_DPI = 1
+MODIFIER_REGEX = re.compile(r"(?P<symbol>[-+*/]?)(?P<number>\d+(\.\d+)?)")
+
+DEVICE_MANAGER = openrazer.client.DeviceManager()
+
+
+def list_devices() -> None:
+    print("\n".join(sorted(x.name for x in DEVICE_MANAGER.devices)))
+
+
+def get_device(name: str) -> None:
+    devices = [x for x in DEVICE_MANAGER.devices if x.name == name]
+    match len(devices):
+        case 0:
+            error(f"No devices found matching name '{name}'.")
+        case 1:
+            return devices[0]
+        case _:
+            error(f"More than 1 device found matching name '{name}'.")
+
+
+def set_dpi(mouse: RazerMouse, modifier: str) -> None:
+    """Changes the DPI of a mouse. Modifier can be one of +-*/ or an empty
+    string followed by a number.
+
+    Note: Results will be rounded to the closest integer within [MIN_DPI, mouse.max_dpi]
+    """
+    if not isinstance(mouse, RazerMouse):
+        error(f"Cannot set DPI on non-mouse device '{mouse.name}'.")
+    if not mouse.has("dpi"):
+        error(f"Cannot set DPI on mouse without dpi attribute.")
+    if min(mouse.dpi) != max(mouse.dpi):
+        error(f"Cannot set DPI on mouse with non-uniform DPI value '{mouse.dpi}'.")
+
+    prev = mouse.dpi[0]
+    new = modify_number(prev, modifier, MIN_DPI, mouse.max_dpi, 0)
+    print(f"DPI: {prev} -> {new}")
+    mouse.dpi = new, new
+
+
+def set_poll_rate(device: RazerMouse, poll_rate: int) -> None:
+    if not device.has("poll_rate"):
+        error(f"Cannot set poll rate on device without poll_rate attribute.")
+    if poll_rate not in device.supported_poll_rates:
+        error(
+            f"Cannot set poll rate to unsupported value '{poll_rate}', value must be on of {device.supported_poll_rates}. "
+        )
+
+    print(f"Poll rate: {device.poll_rate} -> {poll_rate}")
+    device.poll_rate = poll_rate
+
+
+# Helpers
+
+
+def modify_number(
+    original: int | float,  # The original value.
+    modifier: str,  # The modifier of the value.
+    min_value: int | float | None = None,  # The minimum value.
+    max_value: int | float | None = None,  # The maximum value.
+    round_to: int = 0,  # The decimal point to round to.
+) -> int | float:
+    """Modifies a number by a modifier.
+
+    Modifier format:
+    <number>     - Replaces the original number with the given number.
+    +-*/<number> - Adds, subtracts, multiplies, or divides the original number.
+    """
+    match = MODIFIER_REGEX.fullmatch(modifier)
+    if match is None:
+        raise RuntimeError(f"Invalid modifier {modifier}.")
+
+    # Modify value
+    symbol = match.group("symbol")
+    number = float(match.group("number"))
+    match symbol:
+        case "":
+            curr = number
+        case "+":
+            curr = original + number
+        case "-":
+            curr = original - number
+        case "*":
+            curr = original * number
+        case "/":
+            curr = original / number
+        case _:
+            raise RuntimeError(f"Unexpected symbol {symbol}.")
+
+    # Round and min/max
+    if round_to is not None:
+        curr = round(curr, round_to)
+    if min_value is not None:
+        curr = max(curr, min_value)
+    if max_value is not None:
+        curr = min(curr, max_value)
+
+    # Ensure type match with original
+    if isinstance(original, int):
+        curr = int(curr)
+    elif isinstance(original, float):
+        curr = float(curr)
+    return curr
+
+
+def regex_type(pattern: re.Pattern) -> Callable[[str], re.Match]:
+    """Generates an argparse type that ensures the value matches a regex pattern."""
+
+    def check(x: str) -> re.Match:
+        if not pattern.fullmatch(x):
+            error(f"Value '{x}' does not match pattern '{pattern.pattern}'.")
+        return x
+
+    return check
+
+
+def error(message: str) -> None:
+    print(f"Error: {message}")
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog="mouse", description="A basic CLI for managing a mouse."
+    )
+    parser.add_argument(
+        "device_name",
+        nargs="?",
+        help="The name of the device. If unspecified, lists the devices by name instead.",
+    )
+    parser.add_argument(
+        "--dpi", type=regex_type(MODIFIER_REGEX), help="Set the DPI of the mouse."
+    )
+    parser.add_argument("--poll-rate", type=int, help="Set the poll rate of the mouse.")
+
+    args = parser.parse_args()
+
+    if args.device_name is None:
+        list_devices()
+    else:
+        device = get_device(args.device_name)
+        if args.dpi:
+            set_dpi(device, args.dpi)
+        if args.poll_rate:
+            set_poll_rate(device, args.poll_rate)
