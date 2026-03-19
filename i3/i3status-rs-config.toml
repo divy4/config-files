@@ -11,12 +11,15 @@ gpu = [
 
 [[block]]
 block = "focused_window"
-[block.format]
-full = " $title.str(max_w:20) |"
-short = " $title.str(max_w:10) |"
+format = "$title.str(min_w:10,max_w:10)|"
+
+[[block]]
+block = "music"
+format = "{$prev $play $next $combo.str(max_w:10,rot_interval:5) |}"
 
 [[block]]
 block = "sound"
+driver="pulseaudio"
 
 [[block]]
 block = "bluetooth"
@@ -29,6 +32,12 @@ block = "bluetooth"
 mac = "AC:8E:BD:67:12:C5"
 format = " $icon{$percentage|} "
 disconnected_format = " $icon{ $percentage|} "
+
+[[block]]
+block = "custom"
+format = " $text.pango-str()"
+command = "/usr/local/bin/mouse get 'Razer DeathAdder V3'"
+interval = 60
 
 [[block]]
 block = "net"
