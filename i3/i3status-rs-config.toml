@@ -11,7 +11,7 @@ gpu = [
 
 [[block]]
 block = "focused_window"
-format = "$title.str(min_w:10,max_w:10)|"
+format = "$title|"
 
 [[block]]
 block = "music"
@@ -51,8 +51,9 @@ cmd = "network toggle"
 [[block]]
 block = "disk_space"
 interval = 600
+format = "$icon / $percentage.bar(v:true)"
+format_alt = "$icon / $percentage"
 info_type = "used"
-format = "$icon / $used/$total($percentage)"
 path = "/"
 alert_unit = "GB"
 warning = 175
@@ -61,8 +62,9 @@ alert = 220
 [[block]]
 block = "disk_space"
 interval = 600
+format = "home $percentage.bar(v:true)"
+format_alt = "home $percentage"
 info_type = "used"
-format = "$icon /home $used/$total($percentage)"
 path = "/home"
 alert_unit = "GB"
 warning = 1200
@@ -71,8 +73,9 @@ alert = 1400
 [[block]]
 block = "disk_space"
 interval = 600
+format = "data $percentage.bar(v:true)"
+format_alt = "data $percentage"
 info_type = "used"
-format = "$icon /home/dan/data $used/$total($percentage)"
 path = "/home/dan/data"
 alert_unit = "GB"
 warning = 1800
@@ -81,8 +84,9 @@ alert = 2100
 [[block]]
 block = "disk_space"
 interval = 600
+format = "backup $percentage.bar(v:true)"
+format_alt = "backup $percentage"
 info_type = "used"
-format = "$icon /backup $used/$total($percentage)"
 path = "/backup"
 alert_unit = "GB"
 warning = 1400
@@ -91,21 +95,24 @@ alert = 1600
 [[block]]
 block = "memory"
 interval = 5
-format = " $swap_used.eng(prefix:Mi)/$swap_total.eng(prefix:Mi)($swap_used_percents.eng(w:2))"
+format = " $swap_used_percents.bar(v:true)"
+format_alt = " $swap_used_percents"
 warning_swap = 1
 critical_swap = 50
 
 [[block]]
 block = "memory"
 interval = 5
-format = "$icon $mem_used.eng(prefix:Mi)/$mem_total.eng(prefix:Mi)($mem_used_percents.eng(w:2))"
+format = "$icon $mem_used_percents.bar(v:true)"
+format_alt = "$icon $mem_used_percents"
 warning_mem = 50
 critical_mem = 90
 
 [[block]]
 block = "cpu"
 interval = 5
-format = "$icon $barchart$utilization"
+format = "$icon $barchart"
+format_alt = "$icon $utilization"
 info_cpu = 20
 warning_cpu = 50
 critical_cpu = 90
@@ -113,21 +120,17 @@ critical_cpu = 90
 [[block]]
 block = "temperature"
 interval = 5
-format = "$icon $average avg, $max max"
-idle = 50
-good = 70
+format = "$icon avg $average.bar(v:true,max_value:80) max $max.bar(v:true,max_value:80)"
+format_alt = "$icon avg $average max $max"
+idle = 70
+good = 50
 info = 75
 warning = 80
-
-#idle = 50
-#good = 70
-#info = 75
-#warning = 80
 
 [[block]]
 block = "nvidia_gpu"
 interval = 5
-format = " $power  $memory  $utilization  $temperature  $fan_speed"
+format = " $power.bar(v:true)  $memory.bar(v:true,max_value:11000000000)  $utilization.bar(v:true)  $temperature.bar(v:true,max_value:80)  $fan_speed.bar(v:true)"
 idle = 50
 good = 70
 info = 75
@@ -136,8 +139,8 @@ warning = 80
 [[block]]
 block = "service_status"
 service = "nvidia-fan-control"
-active_format = "  "
-inactive_format = "  "
+active_format = ""
+inactive_format = ""
 inactive_state = "Warning"
 [[block.click]]
 button = "middle"
@@ -145,10 +148,8 @@ cmd = "xterm -e 'journalctl --unit nvidia-fan-control.service --follow --lines=3
 
 [[block]]
 block = "time"
+format = "$icon $timestamp.datetime(f:%R)"
 interval = 5
-[block.format]
-short = "$icon $timestamp.datetime(f:%R)"
-
 
 [[block]]
 block = "menu"
