@@ -19,19 +19,21 @@ format = "{$prev $play $next $combo.str(max_w:10,rot_interval:5) |}"
 
 [[block]]
 block = "sound"
+format = " $icon {$volume.bar(v:true) |}"
+format_alt = " $icon {$volume.eng(w:2) |}"
 driver="pulseaudio"
 
 [[block]]
 block = "bluetooth"
 mac = "88:C9:E8:58:F5:55"
-format = " $icon{$percentage|} "
-disconnected_format = " $icon{ $percentage|} "
+format = "$icon{ $percentage.bar(v:true) |}"
+disconnected_format = "$icon"
 
 [[block]]
 block = "bluetooth"
 mac = "AC:8E:BD:67:12:C5"
-format = " $icon{$percentage|} "
-disconnected_format = " $icon{ $percentage|} "
+format = "$icon{ $percentage.bar(v:true) |}"
+disconnected_format = "$icon"
 
 [[block]]
 block = "custom"
