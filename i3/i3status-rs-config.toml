@@ -17,6 +17,7 @@ short = " $title.str(max_w:10) |"
 
 [[block]]
 block = "sound"
+driver="pulseaudio"
 
 [[block]]
 block = "bluetooth"
