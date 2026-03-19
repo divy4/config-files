@@ -219,12 +219,12 @@ bindsym $mod+Mod1+0 move container to workspace $ws5; workspace $ws5
 
 # Mouse
 
-exec --no-startup-id 'Razer DeathAdder V3' --poll-rate 1000
-bindsym $mod+Control+6 exec mouse 'Razer DeathAdder V3' --dpi 100
-bindsym $mod+Control+7 exec mouse 'Razer DeathAdder V3' --dpi '/1.5'
-bindsym $mod+Control+8 exec mouse 'Razer DeathAdder V3' --dpi 4000
-bindsym $mod+Control+9 exec mouse 'Razer DeathAdder V3' --dpi '*1.5'
-bindsym $mod+Control+0 exec mouse 'Razer DeathAdder V3' --dpi 30000
+exec --no-startup-id mouse set 'Razer DeathAdder V3' --poll-rate 1000
+bindsym $mod+Control+6 exec mouse set 'Razer DeathAdder V3' --dpi 100
+bindsym $mod+Control+7 exec mouse set 'Razer DeathAdder V3' --dpi '/1.5'
+bindsym $mod+Control+8 exec mouse set 'Razer DeathAdder V3' --dpi 4000
+bindsym $mod+Control+9 exec mouse set 'Razer DeathAdder V3' --dpi '*1.5'
+bindsym $mod+Control+0 exec mouse set 'Razer DeathAdder V3' --dpi 30000
 
 
 

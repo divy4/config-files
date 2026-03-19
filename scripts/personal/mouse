@@ -28,6 +28,14 @@ def get_device(name: str) -> None:
             error(f"More than 1 device found matching name '{name}'.")
 
 
+def get_device_info(device: Any) -> str:
+    """Returns a one-line string of device info."""
+    items = []
+    if device.has("dpi"):
+        items.append(f"DPI:{device.dpi[0]}")
+    return " ".join(items)
+
+
 def set_dpi(mouse: RazerMouse, modifier: str) -> None:
     """Changes the DPI of a mouse. Modifier can be one of +-*/ or an empty
     string followed by a number.
@@ -133,6 +141,11 @@ if __name__ == "__main__":
         prog="mouse", description="A basic CLI for managing a mouse."
     )
     parser.add_argument(
+        "subcommand",
+        choices=("help", "list", "get", "set"),
+        help="The action to perform. Can be help, list, get, or set.",
+    )
+    parser.add_argument(
         "device_name",
         nargs="?",
         help="The name of the device. If unspecified, lists the devices by name instead.",
@@ -144,11 +157,22 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.device_name is None:
-        list_devices()
-    else:
-        device = get_device(args.device_name)
-        if args.dpi:
-            set_dpi(device, args.dpi)
-        if args.poll_rate:
-            set_poll_rate(device, args.poll_rate)
+    if args.subcommand in ("get", "set"):
+        if args.device_name is None:
+            error("Device name is required when using the get or set commands.")
+
+    match args.subcommand:
+        case "help":
+            parser.print_help()
+            sys.exit(1)
+        case "list":
+            list_devices()
+        case "get":
+            device = get_device(args.device_name)
+            print(get_device_info(device))
+        case "set":
+            device = get_device(args.device_name)
+            if args.dpi:
+                set_dpi(device, args.dpi)
+            if args.poll_rate:
+                set_poll_rate(device, args.poll_rate)
