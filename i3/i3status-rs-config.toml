@@ -38,7 +38,8 @@ disconnected_format = "$icon"
 [[block]]
 block = "custom"
 format = " $text.pango-str()"
-command = "/usr/local/bin/mouse get 'Razer DeathAdder V3'"
+json = true
+cycle = ["/usr/local/bin/mouse get 'Razer DeathAdder V3' --format=i3status-bar", "/usr/local/bin/mouse get 'Razer DeathAdder V3' --format=i3status-text"]
 interval = 60
 
 [[block]]
