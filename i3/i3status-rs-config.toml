@@ -41,6 +41,26 @@ format = " $text.pango-str()"
 json = true
 cycle = ["/usr/local/bin/mouse get 'Razer DeathAdder V3' --format=i3status-bar", "/usr/local/bin/mouse get 'Razer DeathAdder V3' --format=i3status-text"]
 interval = 60
+[[block.click]]
+button = "right"
+cmd = "/usr/local/bin/mouse set 'Razer DeathAdder V3' --dpi '4000'"
+sync = true
+update = true
+[[block.click]]
+button = "middle"
+cmd = "/usr/local/bin/mouse set 'Razer DeathAdder V3' --dpi '4000'"
+sync = true
+update = true
+[[block.click]]
+button = "wheel_up"
+cmd = "/usr/local/bin/mouse set 'Razer DeathAdder V3' --dpi '*1.5'"
+sync = true
+update = true
+[[block.click]]
+button = "wheel_down"
+cmd = "/usr/local/bin/mouse set 'Razer DeathAdder V3' --dpi '/1.5'"
+sync = true
+update = true
 
 [[block]]
 block = "net"
