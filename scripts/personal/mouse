@@ -3,12 +3,17 @@ from collections.abc import Callable
 from openrazer.client.devices.mice import RazerMouse
 
 import argparse
+import json
+import math
 import openrazer.client
 import re
 import sys
 
-MIN_DPI = 1
+MIN_DPI = 100
 MODIFIER_REGEX = re.compile(r"(?P<symbol>[-+*/]?)(?P<number>\d+(\.\d+)?)")
+
+DEFAULT_DPI = 4000
+BAR_CHARS = " ▁▂▃▄▅▆▇█"
 
 DEVICE_MANAGER = openrazer.client.DeviceManager()
 
@@ -28,12 +33,30 @@ def get_device(name: str) -> None:
             error(f"More than 1 device found matching name '{name}'.")
 
 
-def get_device_info(device: Any) -> str:
-    """Returns a one-line string of device info."""
-    items = []
-    if device.has("dpi"):
-        items.append(f"DPI:{device.dpi[0]}")
-    return " ".join(items)
+def get_device_info(device: Any, format: str) -> str:
+    """Returns a string of device info."""
+    match format:
+        case "text":
+            return f"{device.dpi[0]}dpi"
+        case "bar":
+            return get_mouse_dpi_as_bar(device)
+        case "i3status-bar":
+            value = get_normalized_mouse_dpi(device)
+            return (
+                "{"
+                f'"text":"{num_to_bar(value)}",'
+                f'"state":"{get_mouse_dpi_as_i3_state(device)}"'
+                "}"
+            )
+        case "i3status-text":
+            return (
+                "{"
+                f'"text":"{device.dpi[0]}dpi",'
+                f'"state":"{get_mouse_dpi_as_i3_state(device)}"'
+                "}"
+            )
+        case _:
+            RuntimeError(f"Unknown format '{format}'.")
 
 
 def set_dpi(mouse: RazerMouse, modifier: str) -> None:
@@ -68,6 +91,50 @@ def set_poll_rate(device: RazerMouse, poll_rate: int) -> None:
 
 
 # Helpers
+
+
+def get_normalized_mouse_dpi(mouse: RazerMouse) -> str:
+    """Returns the DPI as a normalized value."""
+    dpi = mouse.dpi[0]
+    # 0 to 1/3
+    if dpi < DEFAULT_DPI:
+        curr_power = math.log2(dpi / MIN_DPI)
+        max_power = math.log2(DEFAULT_DPI / MIN_DPI)
+        return curr_power / (3 * max_power)
+    # 1/3
+    elif dpi == DEFAULT_DPI:
+        return 1 / 3
+    # 1/3 to 1
+    else:
+        curr_power = math.log2(dpi / DEFAULT_DPI)
+        max_power = math.log2(mouse.max_dpi / DEFAULT_DPI)
+        return 1 / 3 + (2 * curr_power) / (3 * max_power)
+
+
+def get_mouse_dpi_as_i3_state(mouse: RazerMouse) -> str:
+    """Returns the DPI of a mouse as a i3status-rust status."""
+    # Less than or equal to default
+    dpi = mouse.dpi[0]
+    if dpi < DEFAULT_DPI:
+        return "Info"
+    elif dpi == DEFAULT_DPI:
+        return "Idle"
+
+    # Above default
+    factor = (mouse.max_dpi / DEFAULT_DPI) ** (1 / 3)
+    if dpi < DEFAULT_DPI * factor:
+        return "Good"
+    elif dpi < DEFAULT_DPI * factor**2:
+        return "Warning"
+    else:
+        return "Critical"
+
+
+def num_to_bar(number: int | float, max_value: int | float = 1) -> str:
+    """Converts a number to a vertical bar character."""
+    float_index = number * (len(BAR_CHARS) - 1) / max_value
+    int_index = max(0, min(math.floor(float_index), len(BAR_CHARS)))
+    return BAR_CHARS[int_index]
 
 
 def modify_number(
@@ -153,6 +220,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dpi", type=regex_type(MODIFIER_REGEX), help="Set the DPI of the mouse."
     )
+    parser.add_argument(
+        "--format",
+        choices=("text", "bar", "i3status-bar", "i3status-text"),
+        default="text",
+        help="The output format of the get command.",
+    )
     parser.add_argument("--poll-rate", type=int, help="Set the poll rate of the mouse.")
 
     args = parser.parse_args()
@@ -169,7 +242,7 @@ if __name__ == "__main__":
             list_devices()
         case "get":
             device = get_device(args.device_name)
-            print(get_device_info(device))
+            print(get_device_info(device, args.format))
         case "set":
             device = get_device(args.device_name)
             if args.dpi:
