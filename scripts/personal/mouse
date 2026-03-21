@@ -113,21 +113,23 @@ def get_normalized_mouse_dpi(mouse: RazerMouse) -> str:
 
 def get_mouse_dpi_as_i3_state(mouse: RazerMouse) -> str:
     """Returns the DPI of a mouse as a i3status-rust status."""
-    # Less than or equal to default
+    # Easy cases
     dpi = mouse.dpi[0]
-    if dpi < DEFAULT_DPI:
+    if dpi == MIN_DPI:
+        return "Critical"
+    elif dpi < DEFAULT_DPI:
         return "Info"
     elif dpi == DEFAULT_DPI:
         return "Idle"
+    elif dpi == mouse.max_dpi:
+        return "Critical"
 
     # Above default
-    factor = (mouse.max_dpi / DEFAULT_DPI) ** (1 / 3)
+    factor = (mouse.max_dpi / DEFAULT_DPI) ** (0.5)
     if dpi < DEFAULT_DPI * factor:
         return "Good"
-    elif dpi < DEFAULT_DPI * factor**2:
-        return "Warning"
     else:
-        return "Critical"
+        return "Warning"
 
 
 def num_to_bar(number: int | float, max_value: int | float = 1) -> str:
