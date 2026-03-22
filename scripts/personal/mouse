@@ -159,34 +159,64 @@ def modify_number(
     # Modify value
     symbol = match.group("symbol")
     number = float(match.group("number"))
+
+    # Ensure multiplication is making the value larger and division is making smaller.
+    if number < 1 and symbol == "*":
+        number = 1 / number
+        symbol = "/"
+    elif number < 1 and symbol == "/":
+        number = 1 / number
+        symbol = "*"
+
+    # Snap to values integer multiples/powers of the modifier. In other words,
+    # perform the operation as normal, but stop early at the first number that
+    # is an integer multiple of the number when using +- or an integer power of
+    # the number when using */
+
     match symbol:
         case "":
-            curr = number
+            x = number
         case "+":
-            curr = original + number
+            diff = original - DEFAULT_DPI
+            # Pull the original down to the last DEFAULT_DPI + i*number, then add
+            x = original - diff % number + number
         case "-":
-            curr = original - number
+            diff = original - DEFAULT_DPI
+            # Pull the original up to the last DEFAULT_DPI + i*number, then subtract
+            x = original + (-diff % number) - number
         case "*":
-            curr = original * number
+            factor = original / DEFAULT_DPI
+            # Find the power for original * number = DEFAULT_DPI * number ** power
+            power = math.log(factor * number, number)
+            # Round the power down, allowing for floating point errors
+            power = math.floor(round(power, 5))
+            # Use the right side of the equation with the rounded power
+            x = math.ceil(DEFAULT_DPI * number**power)
         case "/":
-            curr = original / number
+            factor = original / DEFAULT_DPI
+            # Find the power for original / number = DEFAULT_DPI * number ** power
+            power = math.log(factor / number, number)
+            # Round the power up, allowing for floating point errors
+            power = math.ceil(round(power, 5))
+            # Use the right side of the equation with the rounded power
+            x = math.floor(DEFAULT_DPI * number**power)
         case _:
-            raise RuntimeError(f"Unexpected symbol {symbol}.")
+            error(f"Unexpected symbol {symbol}.")
 
     # Round and min/max
     if round_to is not None:
-        curr = round(curr, round_to)
+        x = round(x, round_to)
     if min_value is not None:
-        curr = max(curr, min_value)
+        x = max(x, min_value)
     if max_value is not None:
-        curr = min(curr, max_value)
+        x = min(x, max_value)
 
     # Ensure type match with original
     if isinstance(original, int):
-        curr = int(curr)
+        x = int(x)
     elif isinstance(original, float):
-        curr = float(curr)
-    return curr
+        x = float(x)
+    return x
 
 
 def regex_type(pattern: re.Pattern) -> Callable[[str], re.Match]:
@@ -207,7 +237,20 @@ def error(message: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        prog="mouse", description="A basic CLI for managing a mouse."
+        prog="mouse",
+        description="A basic CLI for managing a mouse.",
+        epilog=(
+            'Snapping note: to make DPI values more consistent, this tool "snaps"'
+            " the dpi value using the following logic:"
+            " when modifying the dpi with + or -, the value will"
+            f' "snap" to the closest value that is {DEFAULT_DPI} +/- an integer'
+            " multiple of the number provided."
+            f" For example, if the current dpi was {DEFAULT_DPI+3} and"
+            f" --dpi +5 was passed, the dpi would increase to {DEFAULT_DPI+5}"
+            f" because {DEFAULT_DPI+5} = {DEFAULT_DPI} + 5 * 1."
+            ' Similarly, when using * or /, the value will "snap" to'
+            f" {DEFAULT_DPI} */ an integer power of the number provided."
+        ),
     )
     parser.add_argument(
         "subcommand",
@@ -220,7 +263,9 @@ if __name__ == "__main__":
         help="The name of the device. If unspecified, lists the devices by name instead.",
     )
     parser.add_argument(
-        "--dpi", type=regex_type(MODIFIER_REGEX), help="Set the DPI of the mouse."
+        "--dpi",
+        type=regex_type(MODIFIER_REGEX),
+        help="Set the DPI of the mouse. Can be prefixed with +-*/ - See note about snapping below.",
     )
     parser.add_argument(
         "--format",
