@@ -109,6 +109,10 @@ function configure_fluxbox {
   install_with_prompt --mode=644 fluxbox/startup ~/.fluxbox/startup
 }
 
+function configure_gamemode {
+  install_with_prompt --sudo --mode=644 gamemode.ini /etc/gamemode.ini
+}
+
 GIT_GPG_KEY_EXPIRE='1y'
 
 function configure_git {

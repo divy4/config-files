@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -exuo pipefail
+
+# TODO: Select the actual display
+export DISPLAY=':0'
+
+# Disable monitor shutoff/screensaver
+xset s off
+xset s noblank
+xset -dpms
