@@ -41,5 +41,10 @@ if [ -x "$POLKIT_AGENT" ]; then
   "$POLKIT_AGENT" &
 fi
 
-#exec startfluxbox
+# On-screen keyboard
+onboard &
+
+# Fix monitor layout
+/usr/local/bin/fixxrandr &
+
 exec i3
