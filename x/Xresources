@@ -1,12 +1,12 @@
 XClock*analog:             false
 XClock*background:         black
-XClock*face:               Ubuntu White-20
+XClock*face:               UbuntuMono Nerd Font Mono White-20
 XClock*foreground:         white
 XClock*padding:            1
 XClock*update:             1
 Xcursor.size:              8
 xterm*background:          black
-xterm*faceName:            Ubuntu Mono
+xterm*faceName:            UbuntuMono Nerd Font Mono
 xterm*faceSize:            12
 xterm*foreground:          white
 xterm*renderFont:          true

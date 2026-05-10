@@ -63,7 +63,7 @@ function install_with_prompt {
   fi
 
   # Throw error if the source doesn't exist
-  if [[ ! -a "$source" ]]; then
+  if [[ ! -e "$source" ]]; then
     error "Source $source does not exist."
   fi
 
@@ -79,7 +79,9 @@ function install_with_prompt {
 
   # Create parents directories if needed
   if [[ -n "$parents_mode" ]] && [[ ! -d "$(dirname "$target")" ]]; then
-   mkdir --parents --mode="$parents_mode" "$(dirname "$target")"
+    # shellcheck disable=SC2174
+    # TODO: Recursively create directories so --mode is respected
+    mkdir --parents --mode="$parents_mode" "$(dirname "$target")"
   fi
 
   # Run install command

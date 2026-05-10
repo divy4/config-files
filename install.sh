@@ -188,6 +188,10 @@ function configure_nano {
   fi
 }
 
+function configure_neovim {
+  install_with_prompt --parents-mode=755 --mode=644 neovim.init.lua ~/.config/nvim/init.lua
+}
+
 function configure_password {
   if [[ "$(get_machine_type)" == 'work' ]]; then
     echo 'Work machine, skipping.'
@@ -233,18 +237,6 @@ function configure_ssh {
 
   generate_ssh_key localhost ~/.ssh/localhost
   append_line_with_prompt "$(cat ~/.ssh/localhost.pub)" ~/.ssh/authorized_keys
-}
-
-function configure_vim {
-  if [[ -f /etc/vimrc ]]; then
-    install_with_prompt --sudo --mode=644 --owner=root --group=root vimrc /etc/vimrc
-  fi
-  if [[ -f /etc/vim/vimrc ]]; then
-    install_with_prompt --sudo --mode=644 --owner=root --group=root -D vimrc /etc/vim/vimrc
-  fi
-  if [[ -f ~/.vimrc ]]; then
-    install_with_prompt --mode=644 vimrc ~/.vimrc
-  fi
 }
 
 function configure_x {
