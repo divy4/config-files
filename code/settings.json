@@ -1,6 +1,7 @@
 {
-  "continue.telemetryEnabled": false,
-  "continue.enableTabAutocomplete": false,
+  "[python]": {
+    "editor.tabSize": 2
+  },
   "cSpell.userWords": [
     "ansible",
     "BUILDKIT",
@@ -19,6 +20,8 @@
     "wholename",
     "zkbd"
   ],
+  "continue.enableTabAutocomplete": false,
+  "continue.telemetryEnabled": false,
   "editor.renderControlCharacters": false,
   "editor.renderWhitespace": "all",
   "editor.rulers": [
@@ -37,8 +40,8 @@
   "editor.tabSize": 2,
   "extensions.ignoreRecommendations": false,
   "files.associations": {
-    "**/ansible/**/*.yml": "ansible",
-    "**/Dockerfile*": "dockerfile"
+    "**/Dockerfile*": "dockerfile",
+    "**/ansible/**/*.yml": "ansible"
   },
   "files.eol": "\n",
   "files.insertFinalNewline": true,

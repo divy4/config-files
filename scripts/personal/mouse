@@ -185,7 +185,8 @@ def modify_number(
             # Pull the original up to the last DEFAULT_DPI + i*number, then subtract
             x = original + (-diff % number) - number
         case "*":
-            factor = original / DEFAULT_DPI
+            # Add one to ensure rounding errors doesn't only increase the value by one
+            factor = (original + 1) / DEFAULT_DPI
             # Find the power for original * number = DEFAULT_DPI * number ** power
             power = math.log(factor * number, number)
             # Round the power down, allowing for floating point errors
@@ -193,7 +194,8 @@ def modify_number(
             # Use the right side of the equation with the rounded power
             x = math.ceil(DEFAULT_DPI * number**power)
         case "/":
-            factor = original / DEFAULT_DPI
+            # Subtract one to ensure rounding errors doesn't only decrease the value by one
+            factor = (original - 1) / DEFAULT_DPI
             # Find the power for original / number = DEFAULT_DPI * number ** power
             power = math.log(factor / number, number)
             # Round the power up, allowing for floating point errors
