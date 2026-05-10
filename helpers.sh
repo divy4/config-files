@@ -13,20 +13,27 @@ function get_configure_functions {
 # making changes. Includes an additional flag, --sudo, which runs command as
 # root.
 function install_with_prompt {
-  local sudo_enabled arguments argument source target command
+  local sudo_enabled arguments argument parents_mode source target command
   if [[ "$#" -lt 2 ]]; then
     error "install_with_prompt requires at least 2 arguments"
   fi
 
   sudo_enabled='false'
+  parents_mode=''
   arguments=()
   # Find source/target
   for argument in "$@"; do
     case "$argument" in
     # Find --sudo flag
     --sudo)
-      sudo_enabled='true'
-      continue;;
+      # Skip if we're already root
+      if [[ "$UID" -eq 0 ]]; then
+        continue
+      fi
+      sudo_enabled='true';;
+    # Find --parents-mode= flag
+    --parents-mode=*)
+      parents_mode="${argument/--parents-mode=/}";;
     # Skip if argument is a flag
     -*)
       arguments+=("$argument")
@@ -38,7 +45,7 @@ function install_with_prompt {
         source="$argument"
       else
         target="$argument"
-      fi
+      fi;;
     esac
   done
 
@@ -46,7 +53,7 @@ function install_with_prompt {
   if [[ "$sudo_enabled" == 'true' ]]; then
     # Generate bash script that executes this function
     command="source ${BASH_SOURCE[0]}; install_with_prompt"
-    for argument in "${arguments[@]}"; do
+    for argument in "$@"; do
       # Escape arguments with single quotes
       command+=" '$argument'"
     done
@@ -68,6 +75,11 @@ function install_with_prompt {
   # ...or if the user says no.
   elif ! confirm 'Install?'; then
     return
+  fi
+
+  # Create parents directories if needed
+  if [[ -n "$parents_mode" ]] && [[ ! -d "$(dirname "$target")" ]]; then
+   mkdir --parents --mode="$parents_mode" "$(dirname "$target")"
   fi
 
   # Run install command
