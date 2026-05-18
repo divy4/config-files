@@ -2,9 +2,11 @@
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
+
 -- Disable mouse popup in menu
 vim.cmd('aunmenu PopUp.How-to\\ disable\\ mouse')
 vim.cmd('aunmenu PopUp.-2-')
+
 
 -- Packages
 vim.pack.add({
@@ -18,12 +20,14 @@ vim.pack.add({
   { src = 'https://github.com/srcery-colors/srcery-vim' },
 })
 
+
 -- Autocomplete
 vim.opt.completeopt = {
   "menuone", -- Show autocomplete menu, even if there's only 1 option
   "noselect", -- Don't select an item by default
   "popup", -- Show extra info about completion options
 }
+
 
 -- Diagnostics
 vim.diagnostic.config({
@@ -34,13 +38,14 @@ vim.diagnostic.config({
   severity_sort = true,      -- Sort diagnostics by severity
 })
 
+
 -- LSP
 
 -- Good list of LSPs here: https://wiki.archlinux.org/title/Language_Server_Protocol
 -- Available configs here: https://github.com/neovim/nvim-lspconfig/tree/master/lsp
 
 -- List of LSPs to enable
-lsps = {
+local lsps = {
   "bashls",
   "deno", -- JavaScript and TypeScript
   "dockerls",
@@ -52,8 +57,20 @@ lsps = {
   "terraformls",
 }
 
+vim.lsp.config("lua_ls", {
+  settings = {
+    Lua = {
+      diagnostics = {
+        globals = {
+          "vim"
+        }
+      }
+    }
+  }
+})
+
 -- For each LSP config, enable autocomplete in it
-for i, lsp in ipairs(lsps) do
+for _, lsp in ipairs(lsps) do
   vim.lsp.config(lsp, {
     on_attach = function(client, bufnr)
       -- Any printable char triggers autocomplete
@@ -77,14 +94,45 @@ end
 
 -- Note: check lsp health with :checkhealth vim.lsp
 
+
 -- Color scheme
 vim.g.srcery_bold = 0
 vim.g.srcery_italic = 0
 vim.cmd.colorscheme('srcery')
 
--- Tree browser
-require("nvim-tree").setup()
 
+-- Tree browser
+
+-- Configure custom mappings
+local function nvim_tree_on_attach(bufnr)
+  local api = require "nvim-tree.api"
+
+  local function opts(desc)
+    return { desc = "nvim-tree: " .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
+  end
+
+  -- default mappings
+  api.map.on_attach.default(bufnr)
+
+  -- custom mappings
+  vim.keymap.set("n", "?", api.tree.toggle_help, opts("Help"))
+  -- Open folders on mouse release so we don't have to double click
+  -- Thanks to https://github.com/nvim-tree/nvim-tree.lua/issues/731
+  vim.keymap.set('n', '<LeftRelease>', function ()
+    local node = api.tree.get_node_under_cursor()
+
+    if node.nodes ~= nil then
+      api.node.open.edit()
+    end
+  end, opts("Expand/collapse folder"))
+end
+
+require("nvim-tree").setup({
+  on_attach = nvim_tree_on_attach,
+})
+
+
+-- General settings
 vim.o.number = true -- Show line numbers
 vim.o.shiftwidth = 2 -- Use 2 spaces for tabs before first non-space char
 vim.o.tabstop = 2 -- Use 2 spaces for tabs after first non-space char
