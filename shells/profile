@@ -423,5 +423,8 @@ fi
 # If we can run X, and we're not currently in an x session...
 if command -v startx &>/dev/null && [[ -z "$DISPLAY" ]]; then
   # Run X
-  startx
+  echo 'Starting X in 1 second, press ctrl+c to interrupt...'
+  if sleep 1; then
+    startx
+  fi
 fi

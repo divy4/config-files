@@ -1,7 +1,6 @@
--- Disable default file browser in favor of nvim-tree
-vim.g.loaded_netrw = 1
-vim.g.loaded_netrwPlugin = 1
-
+---- Disable default file browser in favor of telescope
+--vim.g.loaded_netrw = 1
+--vim.g.loaded_netrwPlugin = 1
 
 -- Disable mouse popup in menu
 vim.cmd('aunmenu PopUp.How-to\\ disable\\ mouse')
@@ -14,8 +13,16 @@ vim.pack.add({
   { src = 'https://github.com/neovim/nvim-lspconfig' },
   -- Icons for file tree
   { src = 'https://github.com/nvim-tree/nvim-web-devicons' },
-  -- File tree
-  { src = 'https://github.com/nvim-tree/nvim-tree.lua' },
+  -- Fuzzy finder / file opening
+  { src = 'https://github.com/nvim-telescope/telescope.nvim' },
+  -- Library of helper functions
+  { src = 'https://github.com/nvim-lua/plenary.nvim' },
+  -- Fuzzy finder
+  { src = 'https://github.com/nvim-telescope/telescope-fzf-native.nvim' },
+  -- File finder
+  { src = 'https://github.com/sharkdp/fd' },
+  -- Recursive grep
+  { src = 'https://github.com/BurntSushi/ripgrep' },
   -- Color scheme
   { src = 'https://github.com/srcery-colors/srcery-vim' },
 })
@@ -94,7 +101,6 @@ end
 
 -- Note: check lsp health with :checkhealth vim.lsp
 
-
 -- Color scheme
 vim.g.srcery_bold = 0
 vim.g.srcery_italic = 0
@@ -103,33 +109,17 @@ vim.cmd.colorscheme('srcery')
 
 -- Tree browser
 
--- Configure custom mappings
-local function nvim_tree_on_attach(bufnr)
-  local api = require "nvim-tree.api"
-
-  local function opts(desc)
-    return { desc = "nvim-tree: " .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
-  end
-
-  -- default mappings
-  api.map.on_attach.default(bufnr)
-
-  -- custom mappings
-  vim.keymap.set("n", "?", api.tree.toggle_help, opts("Help"))
-  -- Open folders on mouse release so we don't have to double click
-  -- Thanks to https://github.com/nvim-tree/nvim-tree.lua/issues/731
-  vim.keymap.set('n', '<LeftRelease>', function ()
-    local node = api.tree.get_node_under_cursor()
-
-    if node.nodes ~= nil then
-      api.node.open.edit()
-    end
-  end, opts("Expand/collapse folder"))
-end
-
-require("nvim-tree").setup({
-  on_attach = nvim_tree_on_attach,
-})
+require('telescope').setup{
+  defaults = {
+    layout_strategy = 'flex',
+    layout_config = {
+      flip_columns = 200,
+      vertical = {
+        preview_height = 0.2
+      },
+    }
+  }
+}
 
 
 -- General settings
@@ -140,4 +130,48 @@ vim.o.smartindent = true -- Auto indent lines
 vim.o.cursorline = true -- Highlight the current line
 vim.o.expandtab = true -- Use spaces instead of tabs
 vim.o.termguicolors = true -- Enable 24-bit colors
+vim.g.mapleader = "," -- Set leader key to comma
+
+-- Mappings
+
+local all_modes = {'n', 'i', 'v'}
+local telescope = require('telescope.builtin')
+
+function keymap_flags(description)
+  return {
+    desc = description,
+    noremap = true,
+    silent = true
+  }
+end
+
+-- Leader + ...
+vim.keymap.set('n', "<Leader>w", "<cmd>w<cr>", keymap_flags("save file"))
+vim.keymap.set('n', "<Leader>s", "<cmd>w<cr>", keymap_flags("save file"))
+
+-- Ctrl-J + ...
+-- f (find)
+vim.keymap.set(all_modes, "<C-j>fb", telescope.buffers, keymap_flags("search buffers"))
+vim.keymap.set(all_modes, "<C-j>fc", telescope.command_history, keymap_flags("search commands"))
+vim.keymap.set(all_modes, "<C-j>ff", telescope.grep_string, keymap_flags("search"))
+vim.keymap.set(all_modes, "<C-j>fg", telescope.live_grep, keymap_flags("search with regex"))
+vim.keymap.set(all_modes, "<C-j>fk", telescope.keymaps, keymap_flags("search key mappings"))
+vim.keymap.set(all_modes, "<C-j>fm", telescope.man_pages, keymap_flags("search man pages"))
+
+-- h (help)
+vim.keymap.set(all_modes, "<C-j>h", telescope.help_tags, keymap_flags("help"))
+
+-- o (open file)
+vim.keymap.set(all_modes, "<C-j>oo", telescope.find_files, keymap_flags("open in current window"))
+vim.keymap.set(all_modes, "<C-j>oc", telescope.find_files, keymap_flags("open in current window"))
+vim.keymap.set(all_modes, "<C-j>oh", "<cmd>vs<cr><cmd>wincmd l<cr><cmd>Telescope find_files<cr>", keymap_flags("open in new window (right)"))
+vim.keymap.set(all_modes, "<C-j>ov", "<cmd>sp<cr><cmd>wincmd j<cr><cmd>Telescope find_files<cr>", keymap_flags("open in new window (up)"))
+vim.keymap.set(all_modes, "<C-j>ot", "<cmd>tab new<cr><cmd>Telescope find_files<cr>", keymap_flags("open in new tab"))
+
+-- s (spellcheck)
+vim.keymap.set(all_modes, "<C-j>s", telescope.spell_suggest, keymap_flags("spellcheck on current word"))
+
+-- Ctrl + ...
+vim.keymap.set(all_modes, "<C-s>", "<cmd>w<cr>", keymap_flags("save"))
+vim.keymap.set(all_modes, "<C-q>", "<cmd>q<cr>", keymap_flags("quit"))
 
