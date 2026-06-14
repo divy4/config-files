@@ -9,6 +9,8 @@ gpu = [
     "",
 ]
 
+### PRIMARY ONLY START MARKER ###
+
 [[block]]
 block = "focused_window"
 format = "$title|"
@@ -169,10 +171,14 @@ inactive_state = "Warning"
 button = "middle"
 cmd = "xterm -e 'journalctl --unit nvidia-fan-control.service --follow --lines=3600 --output=cat'"
 
+### PRIMARY ONLY END MARKER ###
+
 [[block]]
-block = "time"
-format = "$icon $timestamp.datetime(f:%R)"
-interval = 5
+block = "toggle"
+format = "󰌌"
+command_state = "true"
+command_on = "/usr/bin/onboard"
+command_off = "/usr/bin/onboard"
 
 [[block]]
 block = "toggle"
@@ -201,6 +207,11 @@ format = ""
 command_state = "true"
 command_on = "/usr/bin/steam steam://open/games"
 command_off = "/usr/bin/steam steam://open/games"
+
+[[block]]
+block = "time"
+format = "$timestamp.datetime(f:%R)"
+interval = 5
 
 [[block]]
 block = "menu"
