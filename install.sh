@@ -164,6 +164,9 @@ function configure_git {
   generate_ssh_key "$(hostname)-github" ~/.ssh/github
 }
 
+I3_START_MARKER="### PRIMARY ONLY START MARKER ###"
+I3_END_MARKER="### PRIMARY ONLY END MARKER ###"
+
 function configure_i3 {
   if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
     echo 'Work or infrastructure machine, skipping.'
@@ -172,8 +175,18 @@ function configure_i3 {
     echo 'No i3 directory, skipping.'
     return 0
   fi
+
+  # Create copy of primary config with primary-only blocks taken out
+  local secondary_config
+  secondary_config="$(mktemp)"
+  cp i3/i3status-rs-config.toml "$secondary_config"
+  sed --in-place --null-data "s/$I3_START_MARKER.*$I3_END_MARKER//g" "$secondary_config"
+
   install_with_prompt --mode=644 i3/config ~/.config/i3/config
-  install_with_prompt --mode=644 i3/i3status-rs-config.toml ~/.config/i3/i3status-rs-config.toml
+  install_with_prompt --mode=644 i3/i3status-rs-config.toml ~/.config/i3/i3status-rs-config-primary.toml
+  install_with_prompt --mode=644 "$secondary_config" ~/.config/i3/i3status-rs-config-secondary.toml
+
+  rm "$secondary_config"
 }
 
 function configure_nano {
