@@ -269,4 +269,8 @@ function configure_x {
   done
 }
 
+function configure_yay {
+  install_with_prompt --parents-mode=755 --mode=644 yay.init.lua ~/.config/yay/init.lua
+}
+
 main
