@@ -184,8 +184,8 @@ command_off = "/usr/bin/onboard"
 block = "toggle"
 format = "K"
 command_state = "true"
-command_on = "/usr/bin/firefox --new-window 'https://kuroiru.co/'"
-command_off = "/usr/bin/firefox --new-window 'https://kuroiru.co/'"
+command_on = "/usr/bin/firefox --new-window 'https://kuroiru.co/app'"
+command_off = "/usr/bin/firefox --new-window 'https://kuroiru.co/app'"
 
 [[block]]
 block = "toggle"
