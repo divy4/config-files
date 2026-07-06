@@ -51,6 +51,12 @@ function install_with_prompt {
 
   # Escalate if --sudo was passed
   if [[ "$sudo_enabled" == 'true' ]]; then
+    # Skip install if we can't sudo
+    if ! can_sudo; then
+      echo "WARNING: This user is unable to run sudo. Skipping $source -> $target install."
+      return
+    fi
+
     # Generate bash script that executes this function
     command="source ${BASH_SOURCE[0]}; install_with_prompt"
     for argument in "$@"; do
@@ -308,13 +314,17 @@ function get_machine_id {
 
 # Returns the machine type, i.e. personal/work/infrastructure
 function get_machine_type {
-  if [[ "$(whoami)" != 'dan' ]]; then
+  if [[ ! "$(whoami)" =~ ^(dan|drishika)$ ]]; then
     echo 'work'
-  elif [[ -n "${DISPLAY:-}" ]]; then
+  elif command -v startx &>/dev/null; then
     echo 'personal'
   else
     echo 'infrastructure'
   fi
+}
+
+function can_sudo {
+  [[ "$(groups)" =~ sudo|sudoers|wheel ]]
 }
 
 # Assuming every line is a command, only returns the lines that correspond to

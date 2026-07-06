@@ -415,7 +415,13 @@ fi
 ##### Final steps #####
 
 # When in work WSL...
-if [[ "$PROFILE_IS_WSL" == 'true' ]] && [[ "$(whoami)" != 'dan' ]]; then
+if [[ "$PROFILE_IS_WSL" == 'true' ]]; then
   # Start in projects folder
   cd "$HOME/projects" || true
+fi
+
+# If we can run X, and we're not currently in an x session...
+if command -v startx &>/dev/null && [[ -z "$DISPLAY" ]]; then
+  # Run X
+  startx
 fi
