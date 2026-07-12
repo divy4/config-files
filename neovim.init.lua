@@ -9,6 +9,8 @@ vim.cmd('aunmenu PopUp.-2-')
 
 -- Packages
 vim.pack.add({
+  -- AI autocomplete
+  { src = 'https://github.com/huggingface/llm.nvim' },
   -- Language server protocol (LSP) configs for many languages
   { src = 'https://github.com/neovim/nvim-lspconfig' },
   -- Icons for file tree
@@ -25,6 +27,19 @@ vim.pack.add({
   { src = 'https://github.com/BurntSushi/ripgrep' },
   -- Color scheme
   { src = 'https://github.com/srcery-colors/srcery-vim' },
+})
+
+
+-- AI autocomplete
+local llm = require('llm')
+
+llm.setup({
+  backend = "ollama",
+  model = "qwen2.5-coder:7b",
+  url = "http://localhost:11434",
+  accept_keymap = "<C-Tab>",
+  dismiss_keymap = "<S-Tab>",
+  enable_suggestions_on_startup = false,
 })
 
 
@@ -76,6 +91,7 @@ vim.lsp.config("lua_ls", {
   }
 })
 
+
 -- For each LSP config, enable autocomplete in it
 for _, lsp in ipairs(lsps) do
   vim.lsp.config(lsp, {
@@ -100,6 +116,7 @@ for _, lsp in ipairs(lsps) do
 end
 
 -- Note: check lsp health with :checkhealth vim.lsp
+
 
 -- Color scheme
 vim.g.srcery_bold = 0
@@ -137,6 +154,7 @@ vim.o.expandtab = true -- Use spaces instead of tabs
 -- Other
 vim.o.termguicolors = true -- Enable 24-bit colors
 vim.g.mapleader = "," -- Set leader key to comma
+
 
 -- Mappings
 
