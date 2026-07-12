@@ -9,6 +9,8 @@ vim.cmd('aunmenu PopUp.-2-')
 
 -- Packages
 vim.pack.add({
+  -- AI autocomplete
+  { src = 'https://github.com/huggingface/llm.nvim' },
   -- Language server protocol (LSP) configs for many languages
   { src = 'https://github.com/neovim/nvim-lspconfig' },
   -- Icons for file tree
@@ -26,6 +28,18 @@ vim.pack.add({
   -- Color scheme
   { src = 'https://github.com/srcery-colors/srcery-vim' },
 })
+
+
+-- AI autocomplete
+--local llm = require('llm')
+
+--llm.setup({
+--  backend = "ollama",
+--  model = "qwen2.5-coder:7b",
+--  url = "http://localhost:11434",
+--  accept_keymap = "<C-Tab>",
+--  dismiss_keymap = "<S-Tab>",
+--})
 
 
 -- Autocomplete
