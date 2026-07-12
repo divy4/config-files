@@ -4,6 +4,7 @@ from collections.abc import Callable, Iterable
 
 import boto3
 import boto3.s3.transfer
+import contextlib
 import datetime
 import getpass
 import hashlib
@@ -57,6 +58,11 @@ TreeNodeish = str | Section | TreeNode
 SectionFiles = Dict[Section, Set[File]]
 
 
+class ConfigError(SystemExit):
+    def __init__(self, config_path: File, message: Any):
+        super().__init__(f"Config error in {config_path}: {message}")
+
+
 def main() -> None:
     global CONFIG, LOGGER
     CONFIG = Config(CONFIG_PATH)
@@ -91,7 +97,7 @@ def main() -> None:
 class Config:
     """The configuration for this script."""
 
-    def __init__(self, config_path: File) -> "Config":
+    def __init__(self, config_path: File) -> None:
         """Loads configuration for this script."""
         print(f"Loading configuration from {config_path}...")
         self.__config_path = config_path
@@ -100,7 +106,7 @@ class Config:
         try:
             config = json.loads(config_path.read_text())
         except json.decoder.JSONDecodeError as error:
-            self.__error(error)
+            raise ConfigError(self.__config_path, error)
 
         self.log_level = self.__load(config, "log_level", "log level")
         self.checksum_method = self.__load(
@@ -166,15 +172,19 @@ class Config:
             f" 'sudo chmod {exp_perms_str} {self.__config_path}'"
         )
         if owner != exp_owner:
-            self.__error(
-                f"File is owned by {owner} instead of '{exp_owner}'. {instructions}"
+            raise ConfigError(
+                self.__config_path,
+                f"File is owned by {owner} instead of '{exp_owner}'. {instructions}",
             )
         elif group != exp_group:
-            self.__error(
-                f"File belongs to {group} instead of '{exp_group}'. {instructions}"
+            raise ConfigError(
+                self.__config_path,
+                f"File belongs to {group} instead of '{exp_group}'. {instructions}",
             )
         elif perms != exp_perms:
-            self.__error(f"File has incorrect permissions. {instructions}")
+            raise ConfigError(
+                self.__config_path, f"File has incorrect permissions. {instructions}"
+            )
 
     # Value loaders
 
@@ -193,7 +203,7 @@ class Config:
 
         # Generic value handling
         if key not in config:
-            self.__error(f"Missing {key}.")
+            raise ConfigError(self.__config_path, f"Missing {key}.")
         raw_value = config[key]
 
         # Convert raw value
@@ -256,7 +266,7 @@ class Config:
         key: str,  # The key the value was read from.
         raw_value: str,  # The raw value.
         exists: bool = True,  # If the path should exist or not.
-        extension: str = None,  # The expected extension.
+        extension: str | None = None,  # The expected extension.
         path_type: str = "any",  # If the path should be a file or directory.
     ) -> Any:
         """Asserts the validity of a path."""
@@ -265,17 +275,28 @@ class Config:
         value = pathlib.Path(raw_value)
 
         if not value.is_absolute():
-            self.__error(f"{key} value '{value}' is not an absolute path.")
+            raise ConfigError(
+                self.__config_path, f"{key} value '{value}' is not an absolute path."
+            )
         elif exists and not value.exists():
-            self.__error(f"{key} value '{value}' does not exist.")
+            raise ConfigError(
+                self.__config_path, f"{key} value '{value}' does not exist."
+            )
         elif not exists and value.exists():
-            self.__error(f"{key} value '{value}' exists.")
+            raise ConfigError(self.__config_path, f"{key} value '{value}' exists.")
         elif extension is not None and value.suffix != extension:
-            self.__error(f"{key} value '{value}' does not end in '.{extension}'.")
+            raise ConfigError(
+                self.__config_path,
+                f"{key} value '{value}' does not end in '.{extension}'.",
+            )
         elif path_type == "file" and not value.is_file():
-            self.__error(f"{key} value '{value}' is not a file.")
+            raise ConfigError(
+                self.__config_path, f"{key} value '{value}' is not a file."
+            )
         elif path_type == "dir" and not value.is_dir():
-            self.__error(f"{key} value '{value}' is not a directory.")
+            raise ConfigError(
+                self.__config_path, f"{key} value '{value}' is not a directory."
+            )
 
         return value
 
@@ -291,22 +312,31 @@ class Config:
         # Value is correct format
         match = BYTE_REGEX.fullmatch(raw_value)
         if match is None:
-            self.__error(f"{key} value '{raw_value}' is not a valid bit or byte value.")
+            raise ConfigError(
+                self.__config_path,
+                f"{key} value '{raw_value}' is not a valid bit or byte value.",
+            )
         # Is bits or bytes
         assert bit_or_byte in ("bit", "byte")
         if bit_or_byte == "bit" and match.group("bit_or_byte") == "B":
-            self.__error(
-                f"{key} value '{raw_value}' is a byte value instead of a bit value (B vs b)."
+            raise ConfigError(
+                self.__config_path,
+                f"{key} value '{raw_value}' is a byte value instead of a bit value (B vs b).",
             )
         elif bit_or_byte == "bit" and match.group("bit_or_byte") != "b":
-            self.__error(
-                f"{key} value '{raw_value}' is a bit value instead of a byte value (b vs B)."
+            raise ConfigError(
+                self.__config_path,
+                f"{key} value '{raw_value}' is a bit value instead of a byte value (b vs B).",
             )
         # Is rate
         if is_rate and not match.group("rate"):
-            self.__error(f"{key} value '{raw_value}' is not a rate.")
+            raise ConfigError(
+                self.__config_path, f"{key} value '{raw_value}' is not a rate."
+            )
         elif not is_rate and match.group("rate"):
-            self.__error(f"{key} value '{raw_value}' is a rate.")
+            raise ConfigError(
+                self.__config_path, f"{key} value '{raw_value}' is a rate."
+            )
         # Convert to int
         return int(match.group("number")) * BYTE_MULTIPLIER[match.group("multiplier")]
 
@@ -321,16 +351,15 @@ class Config:
         """Asserts the value type is correct."""
         if isinstance(expected_type, Iterable):
             if value not in expected_type:
-                self.__error(f"{key} value '{value}' is not one of {expected_type}.")
+                raise ConfigError(
+                    self.__config_path,
+                    f"{key} value '{value}' is not one of {expected_type}.",
+                )
         elif not isinstance(value, expected_type):
-            self.__error(f"{key} value '{value}' is not a {expected_type.__name__}.")
-
-    # Helpers
-
-    def __error(self, s: str) -> None:
-        """Raises an error and exits."""
-        print(f"Config error in {self.__config_path}: {s}")
-        sys.exit(1)
+            raise ConfigError(
+                self.__config_path,
+                f"{key} value '{value}' is not a {expected_type.__name__}.",
+            )
 
 
 ######################
@@ -344,7 +373,7 @@ class Tree:
     __BYTE_WIDTH = 12
     __COUNT_WIDTH = 8
 
-    def __init__(self) -> "Tree":
+    def __init__(self):
         self.__section_paths = set()
         self.__logger = logging.getLogger("Tree         ")
         self.__logger.info("Loading backup tree...")
@@ -903,7 +932,7 @@ class BackupManager:
 
         # Upload new/updated sections
         if changed:
-            self.__logger.info("Uploading new and changed sections...")
+            self.__logger.info("Uploading new/changed/missing sections...")
             for section in sorted(changed):
                 self.__upload_section(section)
             self.__logger.info("")
@@ -935,6 +964,10 @@ class BackupManager:
             elif current_checksum != previous_checksum:
                 self.__logger.info("Modified ", comparison, relative_path)
                 changed.add(section)
+            # Missing section (file expired)
+            # TODO: Detect if file is missing
+            # elif s3_file_exists(CONFIG.s3_bucket, f"{CONFIG.s3_subpath}/{basename}.tar.gpg"):
+            #    self.__logger.info("Missing  ", comparison, relative_path)
             # Unchanged section (checksum is same)
             else:
                 self.__logger.info("Unchanged", comparison, relative_path)
@@ -1112,6 +1145,18 @@ def extend_s3_lock(
         Key=s3_path,
         Retention={"Mode": "COMPLIANCE", "RetainUntilDate": date},
     )
+
+
+def s3_file_exists(
+    s3_bucket: str,  # The name of the bucket.
+    s3_path: str,  # The path to the file within the bucket.
+) -> bool:
+    """Returns true if a file exists."""
+    try:
+        CONFIG.s3_client.get_object(Bucket=self.s3_bucket, Key=s3_path)
+        return True
+    except CONFIG.s3_client.exceptions.NoSuchKey:
+        return False
 
 
 ########
