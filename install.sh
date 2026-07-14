@@ -11,12 +11,18 @@ function main {
   local tool
   # Sleep for 0 seconds so the terminal size is detected correctly... magic...
   sleep 0
+  # Ensure we're not running as root
   fail_if_running_as_root
+  # Always execute cleanup
   trap cleanup EXIT
+  # Create a temporary directory
   echo 'Creating temporary directory...'
   TEMP_DIR="$(mktemp --directory)"
+  # Ensure we're at the repo root
   cd "$REPO_PATH" || exit
-  for tool in $(get_configure_functions); do
+
+  # Execute each tool
+  for tool in $(get_configure_functions "$@"); do
     print_header "${tool^}"
     "configure_$tool"
   done
@@ -273,4 +279,4 @@ function configure_yay {
   install_with_prompt --parents-mode=755 --mode=644 yay.init.lua ~/.config/yay/init.lua
 }
 
-main
+main "$@"
