@@ -258,6 +258,57 @@ function configure_ssh {
   append_line_with_prompt "$(cat ~/.ssh/localhost.pub)" ~/.ssh/authorized_keys
 }
 
+function configure_systemd {
+  local system_units user
+  if [[ "$(get_machine_type)" != "personal" ]]; then
+    echo 'Non-person machine, skipping'
+    return 0
+  fi
+
+  # Figure out what units we care about
+  mapfile -t system_units < <(find systemd/ -maxdepth 1 -type f -printf "%f\n")
+  mapfile -t user_units < <(find systemd/user/ -maxdepth 1 -type f -printf "%f\n")
+
+  # Install unit files
+  for unit in "${system_units[@]}"; do
+    install_with_prompt --sudo --mode=644 --owner=root --group=root "systemd/$unit" "/etc/systemd/system/$unit" 
+  done
+  for unit in "${user_units[@]}"; do
+    install_with_prompt --sudo --mode=644 --owner=root --group=root "systemd/user/$unit" "/etc/systemd/user/$unit" 
+  done
+
+  echo 'Reloading systemd daemons...'
+  sudo systemctl daemon-reload
+
+  echo 'Enabling units...'
+
+  for unit in "${system_units[@]}"; do
+    case "$unit" in
+    *.service)
+      if ! contains "${system_units[@]}" "${unit//.service/.timer}"; then
+        sudo systemctl enable --now "$unit"
+      fi;;
+    *.timer)
+      sudo systemctl enable "$unit";;
+    *)
+      error "Unsupported systemd unit type for unit $unit."
+    esac
+  done
+
+  for unit in "${user_units[@]}"; do
+    case "$unit" in
+    *.service)
+      if ! contains "${user_units[@]}" "${unit//.service/.timer}"; then
+        systemctl --user enable --now "$unit"
+      fi;;
+    *.timer)
+      systemctl --user enable "$unit";;
+    *)
+      error "Unsupported systemd unit type for unit $unit."
+    esac
+  done
+}
+
 function configure_x {
   local sources source dest
   if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then

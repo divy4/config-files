@@ -24,7 +24,7 @@ function get_configure_functions {
   else
     flags=" $* "
     for func in "${funcs[@]}"; do
-      if [[ "$flags" =~ " --$func " ]]; then
+      if contains "$@" "--$func"; then
         echo "$func"
       fi
     done
@@ -392,4 +392,17 @@ function join {
   if [[ "$#" -gt 2 ]]; then
     printf "$1%s" "${@:3}"
   fi
+}
+
+# Checks if an array contains an element
+function contains {
+  local expected curr
+  #shellcheck disable=SC2124
+  expected="${@: -1}"
+  for curr in "${@:1:$#-1}"; do
+    if [[ "$curr" == "$expected" ]]; then
+      return 0
+    fi
+  done
+  return 1
 }
