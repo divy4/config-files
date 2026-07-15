@@ -5,9 +5,10 @@ NUM_FAILED='0'
 
 
 function main {
-  local check_name
+  local check_name print_name
   for check_name in $(get_check_functions); do
-    echo "---------- ${check_name^} ----------"
+    print_name="${check_name//_/ }"
+    echo "---------- ${print_name^} ----------"
     "check_$check_name"
     echo
   done
@@ -54,6 +55,15 @@ function check_systemd {
   fi
 }
 
+# Check for failed services
+function check_systemd_user {
+  if systemctl --user --failed | grep --quiet '0 loaded units listed.'; then
+    pass 'All systemctl services healthy.'
+  else
+    fail "Failed systemctl services found."
+    systemctl --user --failed
+  fi
+}
 
 # Helpers
 
