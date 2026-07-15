@@ -238,7 +238,7 @@ function configure_shells {
   install_with_prompt --mode=644 shells/profile ~/.profile
   install_with_prompt --mode=644 shells/bashrc ~/.bashrc
   install_with_prompt --mode=644 shells/zshrc ~/.zshrc
-  install_with_prompt --sudo --mode=755 shells/health_check.sh /etc/profile.d/health_check.sh
+  install_with_prompt --sudo --mode=755 shells/health-check.sh /etc/profile.d/health-check.sh
 }
 
 function configure_ssh {

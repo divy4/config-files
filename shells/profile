@@ -356,8 +356,8 @@ elif command -v xclip >/dev/null; then
 fi
 
 # AWS
-# Source authenticate_aws_cli instead of running it directly
-alias authenticate_aws_cli='source authenticate_aws_cli'
+# Source authenticate-aws-cli instead of running it directly
+alias authenticate-aws-cli='source authenticate-aws-cli'
 
 # compressing/decompressing
 alias   compresstar='tar -cf'

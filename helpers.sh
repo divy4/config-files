@@ -22,7 +22,6 @@ function get_configure_functions {
 
   # If any flags are given, only return the functions whose flag was given
   else
-    flags=" $* "
     for func in "${funcs[@]}"; do
       if contains "$@" "--$func"; then
         echo "$func"
