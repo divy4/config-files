@@ -4,9 +4,30 @@ set -euo pipefail
 # General Helpers
 
 function get_configure_functions {
- declare -F \
-  | grep --only-matching --perl-regexp '(?<=\sconfigure_)\w*$' \
-  | sort --ignore-case
+  local funcs func
+  # Get every function
+  mapfile -t funcs < <(
+    declare -F \
+      | grep --only-matching --perl-regexp '(?<=\sconfigure_)\w*$' \
+      | sort --ignore-case
+  )
+  # At least 1 should have been found
+  if [[ "${#funcs[@]}" -eq 0 ]]; then
+    error "Error: No configure_* functions detected"
+  fi
+
+  # If no flags given, print all functions
+  if [[ "$#" -eq 0 ]]; then
+    printf "%s\n" "${funcs[@]}"
+
+  # If any flags are given, only return the functions whose flag was given
+  else
+    for func in "${funcs[@]}"; do
+      if contains "$@" "--$func"; then
+        echo "$func"
+      fi
+    done
+  fi
 }
 
 # Same as the install command, but includes a git diff and user prompt before
@@ -370,4 +391,17 @@ function join {
   if [[ "$#" -gt 2 ]]; then
     printf "$1%s" "${@:3}"
   fi
+}
+
+# Checks if an array contains an element
+function contains {
+  local expected curr
+  #shellcheck disable=SC2124
+  expected="${@: -1}"
+  for curr in "${@:1:$#-1}"; do
+    if [[ "$curr" == "$expected" ]]; then
+      return 0
+    fi
+  done
+  return 1
 }

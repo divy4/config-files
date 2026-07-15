@@ -11,12 +11,18 @@ function main {
   local tool
   # Sleep for 0 seconds so the terminal size is detected correctly... magic...
   sleep 0
+  # Ensure we're not running as root
   fail_if_running_as_root
+  # Always execute cleanup
   trap cleanup EXIT
+  # Create a temporary directory
   echo 'Creating temporary directory...'
   TEMP_DIR="$(mktemp --directory)"
+  # Ensure we're at the repo root
   cd "$REPO_PATH" || exit
-  for tool in $(get_configure_functions); do
+
+  # Execute each tool
+  for tool in $(get_configure_functions "$@"); do
     print_header "${tool^}"
     "configure_$tool"
   done
@@ -232,7 +238,7 @@ function configure_shells {
   install_with_prompt --mode=644 shells/profile ~/.profile
   install_with_prompt --mode=644 shells/bashrc ~/.bashrc
   install_with_prompt --mode=644 shells/zshrc ~/.zshrc
-  install_with_prompt --sudo --mode=755 shells/health_check.sh /etc/profile.d/health_check.sh
+  install_with_prompt --sudo --mode=755 shells/health-check.sh /etc/profile.d/health-check.sh
 }
 
 function configure_ssh {
@@ -250,6 +256,57 @@ function configure_ssh {
 
   generate_ssh_key localhost ~/.ssh/localhost
   append_line_with_prompt "$(cat ~/.ssh/localhost.pub)" ~/.ssh/authorized_keys
+}
+
+function configure_systemd {
+  local system_units user
+  if [[ "$(get_machine_type)" != "personal" ]]; then
+    echo 'Non-person machine, skipping'
+    return 0
+  fi
+
+  # Figure out what units we care about
+  mapfile -t system_units < <(find systemd/ -maxdepth 1 -type f -printf "%f\n")
+  mapfile -t user_units < <(find systemd/user/ -maxdepth 1 -type f -printf "%f\n")
+
+  # Install unit files
+  for unit in "${system_units[@]}"; do
+    install_with_prompt --sudo --mode=644 --owner=root --group=root "systemd/$unit" "/etc/systemd/system/$unit" 
+  done
+  for unit in "${user_units[@]}"; do
+    install_with_prompt --sudo --mode=644 --owner=root --group=root "systemd/user/$unit" "/etc/systemd/user/$unit" 
+  done
+
+  echo 'Reloading systemd daemons...'
+  sudo systemctl daemon-reload
+
+  echo 'Enabling units...'
+
+  for unit in "${system_units[@]}"; do
+    case "$unit" in
+    *.service)
+      if ! contains "${system_units[@]}" "${unit//.service/.timer}"; then
+        sudo systemctl enable --now "$unit"
+      fi;;
+    *.timer)
+      sudo systemctl enable "$unit";;
+    *)
+      error "Unsupported systemd unit type for unit $unit."
+    esac
+  done
+
+  for unit in "${user_units[@]}"; do
+    case "$unit" in
+    *.service)
+      if ! contains "${user_units[@]}" "${unit//.service/.timer}"; then
+        systemctl --user enable --now "$unit"
+      fi;;
+    *.timer)
+      systemctl --user enable "$unit";;
+    *)
+      error "Unsupported systemd unit type for unit $unit."
+    esac
+  done
 }
 
 function configure_x {
@@ -273,4 +330,4 @@ function configure_yay {
   install_with_prompt --parents-mode=755 --mode=644 yay.init.lua ~/.config/yay/init.lua
 }
 
-main
+main "$@"
