@@ -1,0 +1,9 @@
+[Unit]
+Description=Runs remote backup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/upload-backup
+RemainAfterExit=true
+RestartSec=3600
+Restart=on-failure
