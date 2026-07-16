@@ -34,7 +34,7 @@ fi
 #xcompmgr &
 
 # Set background
-feh --bg-scale "$HOME/.config/i3/background.png"
+/usr/local/bin/update-background
 
 # Run polkit auth agent in background
 if [ -x "$POLKIT_AGENT" ]; then

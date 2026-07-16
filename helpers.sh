@@ -55,10 +55,9 @@ function install_with_prompt {
     # Find --parents-mode= flag
     --parents-mode=*)
       parents_mode="${argument/--parents-mode=/}";;
-    # Skip if argument is a flag
+    # Keep argument if it's a flag
     -*)
-      arguments+=("$argument")
-      continue;;
+      arguments+=("$argument");;
     *)
       arguments+=("$argument")
       # First non-flag is the source, second is the target
@@ -113,6 +112,42 @@ function install_with_prompt {
 
   # Run install command
   install "${arguments[@]}"
+}
+
+# Given a path, creates an empty file at that path.
+# Flags:
+# --sudo - Create the file via the root user
+function create_empty_file_with_prompt {
+  local arg sudo_enabled path
+  sudo_enabled='false'
+  path=''
+
+  for arg in "$@"; do
+    case "$arg" in
+      --sudo)
+        sudo_enabled='true';;
+      *)
+        if [[ -n "$path" ]]; then
+          error "Too many arguments given."
+        fi
+        path="$arg";;
+    esac
+  done
+
+  echo -n "Creating empty $path ... "
+
+  # No need to create the file if it already exists
+  if [[ -f "$path" ]]; then
+    echo 'file already exists.'
+    return
+  fi
+
+  if [[ "$sudo_enabled" == 'true' ]]; then
+    sudo touch "$path"
+  else
+    touch "$path"
+  fi
+  echo 'created.'
 }
 
 # Given a string and a file, append the string to the file if it isn't already
