@@ -265,6 +265,7 @@ function configure_systemd {
     return 0
   elif [[ "$(whoami)" != "dan" ]]; then
     echo 'Non-standard account, skipping.'
+    return 0
   fi
 
   locks=(/run/lock/backup.lock)
