@@ -8,10 +8,17 @@ if [[ ! -d "$IMAGE_DIR" ]]; then
   exit 1
 fi
 
+# Get the current background (or output an invalid path character if one isn't found)
+current_image="$(
+  grep --perl-regexp --only-matching "(?<=').*(?=')" "$HOME/.fehbg" \
+  || echo '|'
+)"
+
 image="$(
   find "$IMAGE_DIR" -type f '(' \
     -name '*.jpg' -or -name '.jpeg' -or -name '*.png' \
   ')' \
+  | grep --invert-match --fixed-strings "$current_image" \
   | shuf -n 1
 )"
 
