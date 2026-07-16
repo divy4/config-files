@@ -261,8 +261,10 @@ function configure_ssh {
 function configure_systemd {
   local locks lock system_units user
   if [[ "$(get_machine_type)" != "personal" ]]; then
-    echo 'Non-person machine, skipping'
+    echo 'Non-personal machine, skipping.'
     return 0
+  elif [[ "$(whoami)" != "dan" ]]; then
+    echo 'Non-standard account, skipping.'
   fi
 
   locks=(/run/lock/backup.lock)
