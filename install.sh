@@ -259,11 +259,16 @@ function configure_ssh {
 }
 
 function configure_systemd {
-  local system_units user
+  local locks lock system_units user
   if [[ "$(get_machine_type)" != "personal" ]]; then
     echo 'Non-person machine, skipping'
     return 0
   fi
+
+  locks=(/run/lock/backup.lock)
+  for lock in "${locks[@]}"; do
+    create_empty_file_with_prompt --sudo "$lock"
+  done
 
   # Figure out what units we care about
   mapfile -t system_units < <(find systemd/ -maxdepth 1 -type f -printf "%f\n")
@@ -281,7 +286,6 @@ function configure_systemd {
   sudo systemctl daemon-reload
 
   echo 'Enabling units...'
-
   for unit in "${system_units[@]}"; do
     case "$unit" in
     *.service)

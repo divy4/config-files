@@ -4,7 +4,7 @@ Description=Runs backintime backup
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/backintime prune --profile 1
-ExecStart=/usr/bin/backintime backup --profile 1
+ExecStart=/usr/bin/flock /run/lock/backup.lock /usr/bin/backintime backup --profile 1
 RemainAfterExit=true
 RestartSec=60
 Restart=on-failure
