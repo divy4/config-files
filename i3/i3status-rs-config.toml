@@ -209,6 +209,13 @@ command_on = "/usr/bin/steam steam://open/games"
 command_off = "/usr/bin/steam steam://open/games"
 
 [[block]]
+block = "toggle"
+format = ""
+command_state = "true"
+command_on = "/usr/local/bin/update-background"
+command_off = "/usr/local/bin/update-background"
+
+[[block]]
 block = "time"
 format = "$timestamp.datetime(f:%R)"
 interval = 5
