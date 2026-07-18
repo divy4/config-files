@@ -123,13 +123,18 @@ require('telescope').setup{
 
 
 -- General settings
+
+-- Markers
 vim.o.number = true -- Show line numbers
 vim.wo.relativenumber = true -- Show relative line numbers
+vim.o.cursorline = true -- Highlight the current line
+vim.opt.colorcolumn = "80,100,200,300,400,500,600,700,800,900,1000"
+-- Indenting
 vim.o.shiftwidth = 2 -- Use 2 spaces for tabs before first non-space char
 vim.o.tabstop = 2 -- Use 2 spaces for tabs after first non-space char
 vim.o.smartindent = true -- Auto indent lines
-vim.o.cursorline = true -- Highlight the current line
 vim.o.expandtab = true -- Use spaces instead of tabs
+-- Other
 vim.o.termguicolors = true -- Enable 24-bit colors
 vim.g.mapleader = "," -- Set leader key to comma
 
