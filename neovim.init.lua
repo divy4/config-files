@@ -124,6 +124,7 @@ require('telescope').setup{
 
 -- General settings
 vim.o.number = true -- Show line numbers
+vim.wo.relativenumber = true -- Show relative line numbers
 vim.o.shiftwidth = 2 -- Use 2 spaces for tabs before first non-space char
 vim.o.tabstop = 2 -- Use 2 spaces for tabs after first non-space char
 vim.o.smartindent = true -- Auto indent lines
