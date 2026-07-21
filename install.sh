@@ -191,6 +191,7 @@ function configure_i3 {
   install_with_prompt --mode=644 i3/config ~/.config/i3/config
   install_with_prompt --mode=644 i3/i3status-rs-config.toml ~/.config/i3/i3status-rs-config-primary.toml
   install_with_prompt --mode=644 "$secondary_config" ~/.config/i3/i3status-rs-config-secondary.toml
+  install_with_prompt --sudo --mode=755 i3/i3-keep-awake /usr/local/bin/i3-keep-awake
 
   rm "$secondary_config"
 }

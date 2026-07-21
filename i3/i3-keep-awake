@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+function is_fullscreen {
+  wmctrl -l \
+  | grep --only-matching '^0x[0-9a-f]\+' \
+  | xargs --no-run-if-empty -I {} xprop -id {} \
+  | grep --quiet --ignore-case "_NET_WM_STATE_FULLSCREEN"
+}
+
+function is_playing_audio {
+  pacmd list-sink-inputs \
+  | grep --quiet --fixed-strings 'state: RUNNING'
+}
+
+if is_fullscreen || is_playing_audio; then
+  case "$(( RANDOM % 4 ))" in
+    0)
+      xdotool mousemove_relative -- 1 0;;
+    1)
+      xdotool mousemove_relative -- -1 0;;
+    2)
+      xdotool mousemove_relative -- 0 1;;
+    3)
+      xdotool mousemove_relative -- 0 -1;;
+  esac
+fi
