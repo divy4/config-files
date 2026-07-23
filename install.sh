@@ -54,11 +54,11 @@ function configure_code {
       extensions_file='code/extensions';;
     work)
       command='code'
-      config_dir='/mnt/c/Users/DIvy/AppData/Roaming/Code/'
+      config_dir='/Users/divy/Library/Application Support/Code/'
       extensions_file='code/extensions_work';;
   esac
 
-  install_with_prompt --mode=644 -D code/settings.json "$config_dir/User/settings.json"
+  install_with_prompt --mode=644 code/settings.json "$config_dir/User/settings.json"
 
   mapfile -t missing_extensions < <(
     comm -23 <(sort "$extensions_file") \
@@ -71,7 +71,7 @@ function configure_code {
     printf '%s\n' "${missing_extensions[@]}"
     if confirm 'Install missing Code extensions?'; then
       printf '%s\n' "${missing_extensions[@]}" \
-      | xargs --max-lines=1 "$command" --install-extension
+      | xargs -n 1 "$command" --install-extension
     else
       echo "Skipping."
     fi
@@ -116,6 +116,10 @@ function configure_fluxbox {
 }
 
 function configure_gamemode {
+  if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
+    echo 'Work or infrastructure machine, skipping.'
+    return 0
+  fi
   install_with_prompt --sudo --mode=644 gamemode.ini /etc/gamemode.ini
 }
 
@@ -223,14 +227,20 @@ function configure_password {
 }
 
 function configure_scripts {
-  local sources source destination
+  local root_group sources source destination
+  if [[ "$(get_machine_type)" == 'work' ]]; then
+    root_group='wheel'
+  else
+    root_group='root'
+  fi
+
   mapfile -t sources < <(
     find scripts/ -type f \
       -wholename 'scripts/common/*' -or -wholename "scripts/$(get_machine_type)/*"
   )
   for source in "${sources[@]}"; do
     destination="/usr/local/bin/$(basename "$source")"
-    install_with_prompt --sudo --mode=755 --owner=root --group=root \
+    install_with_prompt --sudo --mode=755 --owner=root --group="$root_group" \
       "$source" "$destination"
   done
 }
@@ -239,7 +249,9 @@ function configure_shells {
   install_with_prompt --mode=644 shells/profile ~/.profile
   install_with_prompt --mode=644 shells/bashrc ~/.bashrc
   install_with_prompt --mode=644 shells/zshrc ~/.zshrc
-  install_with_prompt --sudo --mode=755 shells/health-check.sh /etc/profile.d/health-check.sh
+  if [[ "$(get_machine_type)" != 'work' ]]; then
+    install_with_prompt --sudo --mode=755 shells/health-check.sh /etc/profile.d/health-check.sh
+  fi
 }
 
 function configure_ssh {
@@ -261,8 +273,8 @@ function configure_ssh {
 
 function configure_systemd {
   local locks lock system_units user
-  if [[ "$(get_machine_type)" != "personal" ]]; then
-    echo 'Non-personal machine, skipping.'
+  if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
+    echo 'Work or infrastructure machine, skipping.'
     return 0
   elif [[ "$(whoami)" != "dan" ]]; then
     echo 'Non-standard account, skipping.'
@@ -335,6 +347,10 @@ function configure_x {
 }
 
 function configure_yay {
+  if [[ "$(get_machine_type)" == 'work' ]]; then
+    echo 'Work machine, skipping.'
+    return 0
+  fi
   install_with_prompt --parents-mode=755 --mode=644 yay.init.lua ~/.config/yay/init.lua
 }
 
