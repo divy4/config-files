@@ -8,7 +8,7 @@ function get_configure_functions {
   # Get every function
   mapfile -t funcs < <(
     declare -F \
-      | grep --only-matching --perl-regexp '(?<=\sconfigure_)\w*$' \
+      | perl -lne 'print $& if /(?<=\sconfigure_)\w*$/' \
       | sort --ignore-case
   )
   # At least 1 should have been found
@@ -34,7 +34,7 @@ function get_configure_functions {
 # making changes. Includes an additional flag, --sudo, which runs command as
 # root.
 function install_with_prompt {
-  local sudo_enabled arguments argument parents_mode source target command
+  local sudo_enabled arguments argument value parents_mode source target command
   if [[ "$#" -lt 2 ]]; then
     error "install_with_prompt requires at least 2 arguments"
   fi
@@ -44,6 +44,8 @@ function install_with_prompt {
   arguments=()
   # Find source/target
   for argument in "$@"; do
+    #shellcheck disable=SC2001
+    value="$(echo "$argument" | sed 's/.*=//g')"
     case "$argument" in
     # Find --sudo flag
     --sudo)
@@ -55,6 +57,13 @@ function install_with_prompt {
     # Find --parents-mode= flag
     --parents-mode=*)
       parents_mode="${argument/--parents-mode=/}";;
+    # Convert to mac-compatible flags
+    --mode=*)
+      arguments+=(-m "$value");;
+    --owner=*)
+      arguments+=(-o "$value");;
+    --group=*)
+      arguments+=(-g "$value");;
     # Keep argument if it's a flag
     -*)
       arguments+=("$argument");;
@@ -107,7 +116,7 @@ function install_with_prompt {
   if [[ -n "$parents_mode" ]] && [[ ! -d "$(dirname "$target")" ]]; then
     # shellcheck disable=SC2174
     # TODO: Recursively create directories so --mode is respected
-    mkdir --parents --mode="$parents_mode" "$(dirname "$target")"
+    mkdir --parents -m "$parents_mode" "$(dirname "$target")"
   fi
 
   # Run install command
@@ -211,7 +220,7 @@ function best_guess {
     error 'best_guess requires at least 2 arguments'
   fi
   # Convert everything to lowercase
-  input="${1,,}"
+  input="$(echo "$1" | tr '[:upper:]' '[:lower:]')"
   mapfile -t options < <(printf '%s\n' "${@:2}" | tr '[:upper:]' '[:lower:]')
   # Find one option that either matches or starts with the input
   for option in "${options[@]}"; do
@@ -364,7 +373,7 @@ function get_machine_id {
   if [[ -f /etc/machine-id ]]; then
     cat /etc/machine-id
   else
-    echo "$HOSTNAME"
+    hostname | sha256sum | head --bytes=32
   fi
 }
 
@@ -379,7 +388,12 @@ function get_machine_type {
   fi
 }
 
+# Checks if the user can use sudo
 function can_sudo {
+  # Assume work machine can sudo
+  if [[ "$(get_machine_type)" == 'work' ]]; then
+    true
+  fi
   [[ "$(groups)" =~ sudo|sudoers|wheel ]]
 }
 

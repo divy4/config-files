@@ -4,7 +4,7 @@
 ##### Figure out what's going on ######
 
 # Determine the shell executing this
-PROFILE_SHELL="$(ps --pid "$$" -o comm | tail -1)"
+PROFILE_SHELL="$(ps -p "$$" -o comm | tail -1 | tr -d '-')"
 case "$PROFILE_SHELL" in
 zsh)
   # Measure time from when profile was sourced (see prompt section below)
@@ -23,6 +23,8 @@ esac
 case "$(uname -s)" in
   Linux*)
     PROFILE_OS_ID="$(grep -Po '(?<=^ID=).*' /etc/os-release)";;
+  Darwin*)
+    PROFILE_OS_ID='mac';;
   CYGWIN*|MINGW*)
     PROFILE_OS_ID='windows';;
   *)
@@ -46,9 +48,18 @@ if [ -n "$KONSOLE_VERSION" ]; then
   export TERM='konsole'
 fi
 
-export PATH="$PATH:/home/dan/.local/bin"
+# Add ~/.local/bin for linux systems
+if [[ ! "$PROFILE_OS_ID" =~ ^(mac|windows)$ ]]; then
+  export PATH="$PATH:/home/dan/.local/bin"
+fi
+
+# Add homebrew/workbrew path early so it loads before the default bash on mac
+if [[ "$PROFILE_OS_ID" == 'mac' ]]; then
+  export PATH="/opt/workbrew/bin:/opt/homebrew/bin:$PATH"
+fi
+
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/cuda/targets/x86_64-linux/lib"
-if [[ -z "${DISPLAY:-}" ]]; then
+if [ -z "${DISPLAY:-}" ]; then
   export XDG_MENU_PREFIX=arch-
 fi
 
@@ -156,11 +167,16 @@ echo -e -n '\x1b[\x36 q'
 
 case "$PROFILE_SHELL" in
 zsh)
-  # Generate a zkbd file, if it doesn't already exist
   # shellcheck disable=SC2299,SC3028,SC3057
   zkbd_file="$HOME/.zkbd/$TERM-${${DISPLAY:t}:-$VENDOR-$OSTYPE}"
+
+  # Generate a zkbd file, if it doesn't already exist
   if [ ! -f "$zkbd_file" ]; then
     echo "Special key mapping file ($zkbd_file) not found, generating a new one..."
+    if [ ! -d "$(dirname "$zkbd_file")" ]; then
+      mkdir --parents "$(dirname "$zkbd_file")"
+    fi
+
     # Immediately load function definition via +X
     autoload -Uz +X zkbd
     # Edit zkbd to include extra key bindings
@@ -414,8 +430,8 @@ fi
 
 ##### Final steps #####
 
-# When in work WSL...
-if [[ "$PROFILE_IS_WSL" == 'true' ]]; then
+# When in mac...
+if [[ "$PROFILE_OS_ID" == 'mac' ]]; then
   # Start in projects folder
   cd "$HOME/projects" || true
 fi
