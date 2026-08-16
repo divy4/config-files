@@ -1,14 +1,40 @@
----- Disable default file browser in favor of telescope
---vim.g.loaded_netrw = 1
---vim.g.loaded_netrwPlugin = 1
+-- ########## Helper functions ##########
 
--- Disable mouse popup in menu
-vim.cmd('aunmenu PopUp.How-to\\ disable\\ mouse')
-vim.cmd('aunmenu PopUp.-2-')
+local function is_file(path)
+   local f = io.open(path, "r")
+   return f ~= nil and io.close(f)
+end
 
+local function is_directory(path)
+  return vim.fn.isdirectory(path) ~= 0
+end
+
+
+-- ########## Directory ##########
+
+-- nvim      --> argv_path = "",              argv_dir = "/path/to/dir"
+-- nvim dir/ --> argv_path = "/path/to/dir/", argv_dir = "/path/to/dir"
+-- nvim file --> argv_path = "/path/to/file", argv_dir = "/path/to"
+
+local argv_path = vim.fn.expand('%:p') -- path passed to nvim
+local argv_dir = vim.fn.expand('%:p:h') -- directory containing path passed to nvim
+if argv_path == "" or is_directory(argv_path) then
+  argv_path = argv_dir
+end
+
+-- nvim      --> argv_path = "/path/to/dir",  argv_dir = "/path/to/dir"
+-- nvim dir/ --> argv_path = "/path/to/dir",  argv_dir = "/path/to/dir"
+-- nvim file --> argv_path = "/path/to/file", argv_dir = "/path/to"
+
+vim.cmd("silent! cd " .. vim.fn.fnameescape(argv_dir))
+
+
+-- ########## Plugins ##########
 
 -- Packages
 vim.pack.add({
+  -- AI autocomplete
+  { src = 'https://github.com/huggingface/llm.nvim' },
   -- Language server protocol (LSP) configs for many languages
   { src = 'https://github.com/neovim/nvim-lspconfig' },
   -- Icons for file tree
@@ -25,6 +51,19 @@ vim.pack.add({
   { src = 'https://github.com/BurntSushi/ripgrep' },
   -- Color scheme
   { src = 'https://github.com/srcery-colors/srcery-vim' },
+})
+
+
+-- AI autocomplete
+local llm = require('llm')
+
+llm.setup({
+  backend = "ollama",
+  model = "qwen2.5-coder:7b",
+  url = "http://localhost:11434",
+  accept_keymap = "<C-Tab>",
+  dismiss_keymap = "<S-Tab>",
+  enable_suggestions_on_startup = false,
 })
 
 
@@ -76,6 +115,7 @@ vim.lsp.config("lua_ls", {
   }
 })
 
+
 -- For each LSP config, enable autocomplete in it
 for _, lsp in ipairs(lsps) do
   vim.lsp.config(lsp, {
@@ -101,11 +141,6 @@ end
 
 -- Note: check lsp health with :checkhealth vim.lsp
 
--- Color scheme
-vim.g.srcery_bold = 0
-vim.g.srcery_italic = 0
-vim.cmd.colorscheme('srcery')
-
 
 -- Tree browser
 
@@ -122,6 +157,9 @@ require('telescope').setup{
 }
 
 
+-- ########## Native settings ##########
+
+
 -- General settings
 
 -- Markers
@@ -134,16 +172,53 @@ vim.o.shiftwidth = 2 -- Use 2 spaces for tabs before first non-space char
 vim.o.tabstop = 2 -- Use 2 spaces for tabs after first non-space char
 vim.o.smartindent = true -- Auto indent lines
 vim.o.expandtab = true -- Use spaces instead of tabs
+-- Color scheme
+vim.g.srcery_bold = 0 -- Don't use bold
+vim.g.srcery_italic = 0 -- Don't use italic
+vim.cmd.colorscheme('srcery')
 -- Other
 vim.o.termguicolors = true -- Enable 24-bit colors
 vim.g.mapleader = "," -- Set leader key to comma
+
+
+-- Sessions
+
+local function get_session_file()
+  return vim.fn.getcwd() .. "/.nvim-session"
+end
+
+-- If we opened a directory, register autocmds to load/save the session
+if argv_path == argv_dir then
+  -- Load session during loading
+  vim.api.nvim_create_autocmd({ "VimEnter" }, {
+    pattern = "*",
+    callback = function()
+      -- Do nothing if we don't have a session file
+      if not is_file(get_session_file()) then return end
+
+      -- vim.schedule... because vim hasn't loaded everything just yet.
+      vim.schedule(function()
+        vim.cmd("silent! source " .. get_session_file())
+      end)
+    end,
+  })
+
+  -- Save session right before closing
+  vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
+    pattern = "*",
+    callback = function()
+      vim.cmd("silent! mksession! " .. get_session_file())
+    end,
+  })
+end
+
 
 -- Mappings
 
 local all_modes = {'n', 'i', 'v'}
 local telescope = require('telescope.builtin')
 
-function keymap_flags(description)
+local function keymap_flags(description)
   return {
     desc = description,
     noremap = true,
@@ -179,5 +254,13 @@ vim.keymap.set(all_modes, "<C-j>s", telescope.spell_suggest, keymap_flags("spell
 
 -- Ctrl + ...
 vim.keymap.set(all_modes, "<C-s>", "<cmd>w<cr>", keymap_flags("save"))
+vim.keymap.set(all_modes, "<C-S-s>", "<cmd>w<cr>", keymap_flags("save all"))
 vim.keymap.set(all_modes, "<C-q>", "<cmd>q<cr>", keymap_flags("quit"))
+vim.keymap.set(all_modes, "<C-S-q>", "<cmd>qa<cr>", keymap_flags("quit all"))
 
+
+-- Other
+
+-- Disable mouse popup in menu
+vim.cmd('aunmenu PopUp.How-to\\ disable\\ mouse')
+vim.cmd('aunmenu PopUp.-2-')
