@@ -177,7 +177,6 @@ vim.g.srcery_bold = 0 -- Don't use bold
 vim.g.srcery_italic = 0 -- Don't use italic
 vim.cmd.colorscheme('srcery')
 -- Other
---vim.o.autochdir = true -- Change working directory on open
 vim.o.termguicolors = true -- Enable 24-bit colors
 vim.g.mapleader = "," -- Set leader key to comma
 
@@ -255,7 +254,9 @@ vim.keymap.set(all_modes, "<C-j>s", telescope.spell_suggest, keymap_flags("spell
 
 -- Ctrl + ...
 vim.keymap.set(all_modes, "<C-s>", "<cmd>w<cr>", keymap_flags("save"))
+vim.keymap.set(all_modes, "<C-S-s>", "<cmd>w<cr>", keymap_flags("save all"))
 vim.keymap.set(all_modes, "<C-q>", "<cmd>q<cr>", keymap_flags("quit"))
+vim.keymap.set(all_modes, "<C-S-q>", "<cmd>qa<cr>", keymap_flags("quit all"))
 
 
 -- Other
