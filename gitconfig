@@ -5,6 +5,7 @@
 [core]
   editor = nvim
   encoding = utf-8
+  excludesFile = ~/.config/gitignore
   pager = less -X
 [gpg]
   program = gpg

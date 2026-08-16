@@ -166,6 +166,9 @@ function configure_git {
     s/# populate signingkey/$signingkey/g" gitconfig > "$TEMP_DIR/gitconfig"
   install_with_prompt --mode=644 "$TEMP_DIR/gitconfig" ~/.gitconfig
 
+  # Global gitignore
+  install_with_prompt --parents-mode=755 --mode=644 gitignore ~/.config/gitignore
+
   if [[ "$(get_machine_type)" == 'work' ]]; then
     echo 'Work machine, skipping github SSH key generation.'
     return 0
