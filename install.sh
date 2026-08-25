@@ -42,43 +42,6 @@ function cleanup {
 
 # Tools
 
-function configure_fluxbox {
-  local regex apps
-  if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
-    echo 'Work or infrastructure machine, skipping.'
-    return 0
-  elif [[ ! -d "$HOME/.fluxbox" ]]; then
-    echo 'No fluxbox directory, skipping.'
-    return 0
-  fi
-
-  # Render fluxbox menu with machine-specific tools installed
-
-  # Figure out what apps exist on the system.
-  regex="^(\s*)#\s*autoexec\s*(.*\{(.*?)\})\s*$"
-  mapfile -t apps < <(
-    grep '# autoexec' fluxbox/menu \
-    | sed --regexp-extended "s/$regex/\3/g" \
-    | grep_if_command
-  )
-
-  # Uncomment 'autoexec' lines of commands that exist, then remove the rest.
-  regex="^(\s*)#\s*autoexec\s*(.*\{($(join '|' "${apps[@]}"))\})\s*$"
-  sed --regexp-extended "s/$regex/\1\2/g" fluxbox/menu \
-  | grep --invert-match '#\s*autoexec' \
-  > "$TEMP_DIR/menu"
-
-  # Copy files
-  install_with_prompt --mode=644 fluxbox/styles/black ~/.fluxbox/styles/black
-  install_with_prompt --mode=644 fluxbox/apps ~/.fluxbox/apps
-  install_with_prompt --mode=644 fluxbox/groups ~/.fluxbox/groups
-  install_with_prompt --mode=644 fluxbox/init ~/.fluxbox/init
-  install_with_prompt --mode=644 fluxbox/keys ~/.fluxbox/keys
-  install_with_prompt --mode=644 "$TEMP_DIR/menu" ~/.fluxbox/menu
-  install_with_prompt --mode=644 fluxbox/slitlist ~/.fluxbox/slitlist
-  install_with_prompt --mode=644 fluxbox/startup ~/.fluxbox/startup
-}
-
 function configure_gamemode {
   if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
     echo 'Work or infrastructure machine, skipping.'
