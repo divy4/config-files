@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 import atexit
 import argparse
+from collections import defaultdict
+from functools import cached_property
 import enum
 import re
-import pathlib
+from pathlib import Path
 import signal
 import subprocess
 import sys
 import time
 
-from typing import Any, Dict, Generator, Tuple
+from typing import Any, Dict, Generator, List, Tuple, Set
 from collections.abc import Collection, Sequence
 
 LOCKED_FILE_LOOP_SECONDS = 0.1
@@ -24,127 +26,325 @@ class FileAction(enum.Enum):
     MOVED_TO = "MOVED_TO"
 
 
-def autorename_files(args: Any) -> None:
-    """Autorename files in a folder to be numbered sequentially."""
-    extension_pattern = extensions_to_regex(args.extensions)
-    current_files = get_numbered_files(args.folder, extension_pattern)
-    last_rename_path = None
-    last_rename_time = 0
-    pair_index = 1
+class NumberedPath(Path):
+    """A path that may follow the form \\d+.ext or \\d+-\\d+.ext"""
 
-    for file, _, event_time in watch_directory(args.folder, extension_pattern):
-        print(f"Change detected for {file.name}", end="")
+    @property
+    def suffixes_str(self) -> str:
+        """Returns self.suffixes as a string."""
+        return "".join(self.suffixes)
 
-        # If the file is already registered and was renamed recently,
-        # ignore it (to prevent an endless loop of renaming files).
-        if current_files.get(file, 0) > event_time - args.cooldown:
-            print(
-                f", but it was modified less than {args.cooldown} seconds ago. Ignoring."
-            )
-            continue
+    @cached_property
+    def numbers(self) -> Tuple[int, int] | Tuple[int, None] | Tuple[None, None]:
+        """Returns the number component of the filename."""
+        prefix = self.name.split(".")[0]
+        parts = prefix.split("-")
+        # File can only have a single number or two numbers separated by a hyphen.
+        if len(parts) > 2:
+            return None, None
 
-        # Prune files that don't exist anymore
-        for x in tuple(current_files.keys()):
-            if not x.exists() or x == file:
-                del current_files[x]
+        # First number
+        if not parts[0].isdigit():
+            return None, None
+        first_num = int(parts[0])
 
-        # Figure out what the file should be called
-        # ...when we haven't renamed anything for a while
-        if event_time > last_rename_time + args.pairing_window:
-            prefix = get_max_file_number_prefix(current_files, True)
-            pair_index = 1
-            target_file = args.folder / f"{prefix}{file.suffix}"
-        # ...or when we have renamed something recently
+        # Second number
+        if len(parts) < 2 or not parts[1].isdigit():
+            return first_num, None
+        return first_num, int(parts[1])
+
+    @property
+    def number(self) -> int | None:
+        """Returns the file number."""
+        return self.numbers[0]
+
+    @property
+    def subnumber(self) -> int | None:
+        """Returns the file subnumber."""
+        return self.numbers[1]
+
+    @property
+    def number_always(self) -> int:
+        """Same as .number, but throws an exception if None."""
+        assert self.number is not None
+        return self.number
+
+    @property
+    def subnumber_always(self) -> int:
+        """Same as .subnumber, but throws an exception if None."""
+        assert self.subnumber is not None
+        return self.subnumber
+
+    @property
+    def is_numbered(self) -> bool:
+        """Returns true if the filename is \\d+ or \\d+-\\d+"""
+        return self.numbers[0] is not None
+
+    @property
+    def is_subnumbered(self) -> bool:
+        """Returns true if the file is \\d+-\\d+"""
+        return self.numbers[1] is not None
+
+    def get_numbered_children(
+        self,
+        extension_pattern: re.Pattern,  # The file extensions to filter on.
+        ignore: Path | None = None,  # A path to ignore in the results
+    ) -> Set[NumberedPath]:
+        """Returns all numbered directories and files in a path."""
+        paths = set()
+        for x in self.glob("*"):
+            x = NumberedPath(x)
+            if not x.is_numbered or x == ignore:
+                continue
+            if x.is_file() and not extension_pattern.search(x.name):
+                continue
+            if x.is_dir() and x.suffix != "":
+                continue
+            paths.add(x)
+        return paths
+
+
+class Renamer:
+    """A class for renaming files in a folder."""
+
+    def __init__(self, args: Any):
+        self.__pairing_window = args.pairing_window
+        self.__extension_pattern = args.extensions_regex
+        self.__last_event_time = 0
+        self.__last_rename_time = 0
+        self.__renamed_files = []
+
+    def handle_file_event(self, file: NumberedPath, event_time: float) -> None:
+        """Handles a file event for renaming."""
+        print(f"Change detected for {file}", end="")
+
+        self.__last_event_time = event_time
+        numbered_paths = file.parent.get_numbered_children(
+            self.__extension_pattern, file
+        )
+        next_num = get_next_number(numbered_paths)
+
+        # Ignore files that already fit in
+        if file.number is not None and file.number <= next_num:
+            print(" (already numbered)", end="")
+            return
+
+        # If we've haven't renamed recently, just rename it to the next number
+        if event_time > self.__last_rename_time + self.__pairing_window:
+            self.rename(file, next_num)
+
+        # Otherwise, subnumber it
         else:
-            if last_rename_path is None:
-                raise RuntimeError("Unexpected last_rename_path = None")
+            # Filter to just files with the current number
+            curr_num = get_current_number(numbered_paths)
+            curr_num_paths = [x for x in numbered_paths if x.number == curr_num]
+            next_subnum = get_next_subnumber(curr_num_paths)
 
-            # And if this is the first pairing, rename the first file we renamed
-            if pair_index == 1:
-                target_file = (
-                    args.folder / f"{last_rename_path.stem}-1{last_rename_path.suffix}"
-                )
-                rename_file(last_rename_path, target_file)
-            prefix = get_max_file_number_prefix(current_files, False)
-            pair_index += 1
-            target_file = args.folder / f"{prefix}-{pair_index}{file.suffix}"
+            # Subnumber preexisting files
+            for path in curr_num_paths:
+                if not path.is_subnumbered:
+                    self.rename(path, curr_num, next_subnum)
+                    next_subnum += 1
+
+            # New name for current file
+            self.rename(file, curr_num, next_subnum)
+        print()
+
+    def rename(self, source: NumberedPath, num: int, subnum: int | None = None) -> None:
+        """Adds rename to a list of renames."""
+        # Figure out what we're naming it
+        if subnum is None:
+            target = source.parent / f"{num}{source.suffixes_str}"
+        else:
+            target = source.parent / f"{num}-{subnum}{source.suffixes_str}"
+        print(f", {source} -> {target}", end="")
+
+        # Skip if the target is the same as the source.
+        if source == target:
+            print(f" (same path)", end="")
+            return
+
+        # Ensure something else isn't currently working with the file
+        wait_for_file_locks(source)
+
+        # Skip if the source doesn't exist anymore
+        if not source.exists():
+            print(" (source does not exist after lock wait)", end="")
+            return
+
+        # Raise error if the target already exists
+        if target.exists():
+            raise RuntimeError(
+                f"Unable to rename {source.name} -> {target.name}: "
+                f"{target.name} already exists."
+            )
 
         # Rename the file
-        if rename_file(file, target_file):
-            last_rename_path = target_file
-            last_rename_time = event_time
-            current_files[target_file] = event_time
-        print(".")
+        source.rename(target)
+        self.__last_rename_time = self.__last_event_time
+        self.__renamed_files.append(target)
+
+    def get_renamed_files(self) -> List[NumberedPath]:
+        """Returns the paths the renamer has renamed since this function was
+        last called."""
+        files = self.__renamed_files
+        self.__renamed_files = []
+        return files
 
 
-def rename_file(source: pathlib.Path, target: pathlib.Path) -> bool:
-    """Renames a file. Returns true if the file was renamed."""
-    print(f", renaming {source.name} to {target.name}", end="")
+class Chunker:
+    """A class for chunking renamed files into subfolders."""
 
-    # Skip if the target is the same as the source.
-    if source == target:
-        print(f", but it already has the correct name. Ignoring.")
-        return False
+    def __init__(self, args: Any):
+        self.__root_path = NumberedPath(args.folder)
+        self.__chunk_size = args.chunk_size
+        self.__extensions_regex = args.extensions_regex
 
-    # Run the last checks before renaming the file
-    wait_for_file_locks(source)
-
-    # Skip if the source doesn't exist
-    if not source.exists():
-        print(
-            ", but it no longer exists after waiting for other processes to "
-            "unlock it. Ignoring."
-        )
-        return False
-
-    # Raise error if the target already exists
-    if target.exists():
-        raise RuntimeError(
-            f"Unable to rename {source.name} -> {target.name}: "
-            f"{target.name} already exists."
-        )
-
-    # Rename the file
-    source.rename(target)
-    return True
+    def handle_file_event(self, renamed_files: List[NumberedPath]) -> None:
+        """Handles a file event."""
+        # Chunker disabled
+        if self.__chunk_size <= 0:
+            return
+        # Didn't do anything in folder
+        if not any(self.__root_path == x.parent for x in renamed_files):
+            return
+        # Chunk!
+        chunked_files, chunk_dirs = self.__get_chunked_paths()
+        self.__execute_chunking(chunked_files, chunk_dirs)
 
 
-# Predictions
+    def __get_chunked_paths(self) -> Tuple[Dict[int, List[NumberedPath]], Dict[int, NumberedPath]]:
+        """Returns dicts of files and directories for each chunk."""
+        children = self.__root_path.get_numbered_children(self.__extensions_regex)
+
+        # Split dirs and files based on their chunk
+        chunked_files = defaultdict(list)
+        chunk_dirs = {}
+        for path in children:
+            start, end = self.__chunk_range(path)
+            # Sort files into chunks
+            if path.is_file():
+                chunked_files[start].append(path)
+            # Track which folder is responsible for which chunk
+            elif path.is_dir():
+                # Ensure no duplicate chunks
+                if start in chunk_dirs:
+                    raise RuntimeError(
+                        "Multiple dirs for the same chunk: "
+                        f"{chunk_dirs[start]} and {path}"
+                    )
+                # Ensure no mismatched chunk ranges
+                path_start, path_end = path.number, path.subnumber
+                if (path_start, path_end) != (start, end):
+                    raise RuntimeError(
+                        f"Chunk folder {path} is for range "
+                        f"{path.number} -> {path.subnumber}, instead of the "
+                        f"expected {start} -> {end}"
+                    )
+                chunk_dirs[start] = path
+
+        return chunked_files, chunk_dirs
+
+    def __execute_chunking(
+        self,
+        chunked_files: Dict[int, List[NumberedPath]],
+        chunk_dirs: Dict[int, NumberedPath],
+    ) -> None:
+        """Moves files into chunk dirs."""
+        # No files to chunk
+        if len(chunked_files) <= 1:
+            return
+
+        largest_chunk = max(chunked_files.keys())
+
+        print("Chunking", end="")
+        for start, files in sorted(chunked_files.items()):
+            end = start + self.__chunk_size - 1
+
+            # Leave files for current chunk at the top level
+            if start == largest_chunk:
+                continue
+
+            # Ensure chunk folder exists
+            if start in chunk_dirs:
+                chunk_dir = chunk_dirs[start]
+            else:
+                start, end = self.__chunk_range(files[0])
+                chunk_dir = self.__root_path / f"{start}-{end}"
+                print(f", + {chunk_dir}", end="")
+                chunk_dir.mkdir(exist_ok=False)
+
+            # Move files to chunk dir
+            print(f", {self.__root_path}/{start}-{end} -> {chunk_dir}")
+            for file in files:
+                file.rename(chunk_dir / file.name)
+
+    # Helpers
+
+    def __chunk_range(self, path: NumberedPath) -> Tuple[int, int]:
+        """Computes the chunk range for a given path."""
+        start = (path.number_always // self.__chunk_size) * self.__chunk_size
+        end = start + self.__chunk_size - 1
+        return start, end
 
 
-def get_max_file_number_prefix(
-    current_files: Dict[pathlib.Path, int | float],  # The current set of files.
-    increment: bool,  # If the number returned should be incremented by one.
-) -> str:
-    """Returns the largest number prefix in a set of files.."""
-    if len(current_files) == 0:
-        return "0"
-    # Find file with the largest starting number
-    file = max(current_files.keys(), key=lambda x: int(get_number_prefix(x)))
-    prefix = get_number_prefix(file)
-    # Figure out the number of digits it has (in case it's zero-padded)
-    num_digits = len(prefix)
-    # Add one
-    number = int(prefix)
-    if increment:
-        number += 1
-    # And make a Path out of it
-    return f"{number:0{num_digits}}"
+# Methods
 
 
-# File monitoring / lookup
+def autorename_files(args: Any) -> None:
+    """Autorename files in a folder to be numbered sequentially."""
+    renamer = Renamer(args)
+    chunker = Chunker(args)
+
+    for file, _, event_time in watch_directory(args.folder, args.extensions_regex):
+        renamer.handle_file_event(file, event_time)
+        chunker.handle_file_event(renamer.get_renamed_files())
+
+
+# Numbering
+
+
+def get_current_number(paths: Collection[NumberedPath]) -> int:
+    """Returns what the current number is, given a set of numbered paths."""
+    if len(paths) == 0:
+        return 0
+    return max(x.number_always for x in paths)
+
+
+def get_next_number(paths: Collection[NumberedPath]) -> int:
+    """Returns what the next number should be, given a set of numbered paths."""
+    if len(paths) == 0:
+        return 0
+    return get_current_number(paths) + 1
+
+
+def get_next_subnumber(paths: Collection[NumberedPath]) -> int:
+    """Returns what the next subnumber should be, given a set of numbered paths."""
+    if len(paths) == 0:
+        return 0
+    # Ensure all paths have the same number
+    first = next(iter(paths))
+    assert all(
+        x.number == first.number for x in paths
+    ), "Subnumber can only be computed on paths with the same number."
+    # If there is an un-subnumbered file, pretend it's a -1 subnumber
+    # (meaning that -0 is the next subnumber)
+    return max(x.subnumber or -1 for x in paths) + 1
+
+
+# File monitoring
 
 
 def watch_directory(
-    folder: pathlib.Path,  # The folder to monitor.
-    extension_pattern: re.Pattern,  # The file extensions to monitor.
-) -> Generator[Tuple[pathlib.Path, FileAction, float], None, None]:
+    folder: Path,  # The folder to monitor.
+    extensions_regex: re.Pattern,  # The file extensions to monitor.
+) -> Generator[Tuple[NumberedPath, FileAction, float], None, None]:
     """Yields files, the action performed, and the time as they are
     added/moved to the directory."""
 
     last_move_from_time = 0
     for path, action, event_time in watch_directory_with_inotifywait(
-        folder, extension_pattern
+        folder, extensions_regex
     ):
         # Renaming is a move from + to, so note the time if moved away...
         if action == FileAction.MOVED_FROM:
@@ -163,9 +363,9 @@ def watch_directory(
 
 
 def watch_directory_with_inotifywait(
-    folder: pathlib.Path,  # The folder to monitor.
-    extension_pattern: re.Pattern,  # The file extensions to monitor.
-) -> Generator[Tuple[pathlib.Path, FileAction, float], None, None]:
+    folder: Path,  # The folder to monitor.
+    extensions_regex: re.Pattern,  # The file extensions to monitor.
+) -> Generator[Tuple[NumberedPath, FileAction, float], None, None]:
     """Returns the command needed to watch a directory."""
     command = [
         "inotifywait",
@@ -173,7 +373,7 @@ def watch_directory_with_inotifywait(
         "--event",
         "create,moved_from,moved_to",
         "--includei",
-        extension_pattern.pattern,
+        extensions_regex.pattern,
         "--format",
         "%w%f,%e",
         "--timefmt",
@@ -182,10 +382,10 @@ def watch_directory_with_inotifywait(
     ]
     for line in run_command(command):
         split = line.split(",")
-        yield pathlib.Path(split[0]), FileAction(split[1]), time.time()
+        yield NumberedPath(split[0]), FileAction(split[1]), time.time()
 
 
-def wait_for_file_locks(file: pathlib.Path) -> None:
+def wait_for_file_locks(file: Path) -> None:
     """Waits until no processes are currently using a file."""
     first_attempt = True
     while True:
@@ -200,19 +400,6 @@ def wait_for_file_locks(file: pathlib.Path) -> None:
             if not first_attempt:
                 print(f"{file.name} unlocked.")
             return
-
-
-def get_numbered_files(
-    folder: pathlib.Path,  # The folder to check for files in.
-    extension_pattern: re.Pattern,  # The file extensions to filter on.
-) -> Dict[pathlib.Path, float | int]:
-    """Returns all numbered files in a path."""
-    current_time = time.time()
-    return {
-        x: current_time
-        for x in folder.glob("*")
-        if x.is_file() and x.name[0].isdigit() and extension_pattern.search(x.name)
-    }
 
 
 # I/O
@@ -248,23 +435,13 @@ def run_command(command: Sequence[str], stderr=None) -> Generator[str, None, Non
         )
 
 
-def get_number_prefix(file: pathlib.Path) -> str:
-    """Returns number prefix of a string."""
-    if not file.name[0].isdigit():
-        raise ValueError(f"File {file.name} does not start with a digit.")
-    match = NUMBER_PREFIX.match(file.name)
-    if match is None:
-        raise ValueError(f"Unable to extract number from {file.name}.")
-    return match.group(0)
-
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(prog=pathlib.Path(__file__).name)
+    parser = argparse.ArgumentParser(prog=Path(__file__).name)
     parser.add_argument(
-        "--cooldown",
-        type=float,
-        default=10,
-        help="(Default: 10.0) The number of seconds to wait before a file can be renamed twice",
+        "--chunk-size",
+        type=int,
+        default=-1,
+        help="(Default: disabled) Organize files into subfolders of a specific size.",
     )
     parser.add_argument(
         "--pairing-window",
@@ -272,9 +449,7 @@ if __name__ == "__main__":
         default=-1,
         help='(Default: disabled) The number of seconds between autonaming files where they will be considered a "pair" and given the same base name.',
     )
-    parser.add_argument(
-        "folder", type=pathlib.Path, help="The folder to monitor for changes"
-    )
+    parser.add_argument("folder", type=Path, help="The folder to monitor for changes")
     parser.add_argument(
         "extensions",
         type=str,
@@ -282,6 +457,9 @@ if __name__ == "__main__":
         help="(Default: all files) File extensions to limit renaming to.",
     )
     args = parser.parse_args(sys.argv[1:])
+
+    # Derivative values
+    args.extensions_regex = extensions_to_regex(args.extensions)
 
     try:
         autorename_files(args)

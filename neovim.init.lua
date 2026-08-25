@@ -215,48 +215,104 @@ end
 
 -- Mappings
 
-local all_modes = {'n', 'i', 'v'}
+
 local telescope = require('telescope.builtin')
 
-local function keymap_flags(description)
-  return {
+local function set_keymap(modes, expected_mode, trigger, command, description)
+  -- Setup flags
+  local flags = {
     desc = description,
     noremap = true,
     silent = true
   }
+
+  -- Exit early if the command isn't a string
+  if (type(command) ~= "string") then
+    vim.keymap.set(modes, trigger, command, flags)
+    return
+  end
+
+  -- Convert single mode to a list
+  if (type(modes) == "string") then
+    modes = {modes}
+  end
+
+  -- Assign each mode
+  for _, mode in ipairs(modes) do
+    local mode_pair = string.format("%s%s", mode, expected_mode)
+    local custom_command = command
+    -- Modify command for special cases
+    if (mode == expected_mode or expected_mode == "") then
+      -- Nothing to do
+
+    -- Change command based on the current vs expected mode
+    elseif (mode_pair == "in") then
+      custom_command = string.format("<C-o>%s", command)
+    else
+      error(string.format("Unrecognized mode pair: %s->%s", mode, expected_mode))
+    end
+
+    -- Set
+    vim.keymap.set(mode, trigger, custom_command, flags)
+  end
 end
 
+
+local i = "i"
+local n = "n"
+local v = "v"
+local in_ = {"i", "n"}
+--local iv = {"i", "v"}
+--local nv = {"n", "v"}
+local inv = {"i", "n", "v"}
+
 -- Leader + ...
-vim.keymap.set('n', "<Leader>w", "<cmd>w<cr>", keymap_flags("save file"))
-vim.keymap.set('n', "<Leader>s", "<cmd>w<cr>", keymap_flags("save file"))
+set_keymap(n, "", "<Leader>w", "<cmd>w<cr>", "save file")
+set_keymap(n, "", "<Leader>w", "<cmd>w<cr>", "save file")
+set_keymap(n, "", "<Leader>s", "<cmd>w<cr>", "save file")
 
 -- Ctrl-J + ...
 -- f (find)
-vim.keymap.set(all_modes, "<C-j>fb", telescope.buffers, keymap_flags("search buffers"))
-vim.keymap.set(all_modes, "<C-j>fc", telescope.command_history, keymap_flags("search commands"))
-vim.keymap.set(all_modes, "<C-j>ff", telescope.grep_string, keymap_flags("search"))
-vim.keymap.set(all_modes, "<C-j>fg", telescope.live_grep, keymap_flags("search with regex"))
-vim.keymap.set(all_modes, "<C-j>fk", telescope.keymaps, keymap_flags("search key mappings"))
-vim.keymap.set(all_modes, "<C-j>fm", telescope.man_pages, keymap_flags("search man pages"))
+set_keymap(inv, "", "<C-j>fb", telescope.buffers, "search buffers")
+set_keymap(inv, "", "<C-j>fc", telescope.command_history, "search commands")
+set_keymap(inv, "", "<C-j>ff", telescope.grep_string, "search")
+set_keymap(inv, "", "<C-j>fg", telescope.live_grep, "search with regex")
+set_keymap(inv, "", "<C-j>fk", telescope.keymaps, "search key mappings")
+set_keymap(inv, "", "<C-j>fm", telescope.man_pages, "search man pages")
 
 -- h (help)
-vim.keymap.set(all_modes, "<C-j>h", telescope.help_tags, keymap_flags("help"))
+set_keymap(inv, "", "<C-j>h", telescope.help_tags, "help")
 
 -- o (open file)
-vim.keymap.set(all_modes, "<C-j>oo", telescope.find_files, keymap_flags("open in current window"))
-vim.keymap.set(all_modes, "<C-j>oc", telescope.find_files, keymap_flags("open in current window"))
-vim.keymap.set(all_modes, "<C-j>oh", "<cmd>vs<cr><cmd>wincmd l<cr><cmd>Telescope find_files<cr>", keymap_flags("open in new window (right)"))
-vim.keymap.set(all_modes, "<C-j>ov", "<cmd>sp<cr><cmd>wincmd j<cr><cmd>Telescope find_files<cr>", keymap_flags("open in new window (up)"))
-vim.keymap.set(all_modes, "<C-j>ot", "<cmd>tab new<cr><cmd>Telescope find_files<cr>", keymap_flags("open in new tab"))
+set_keymap(inv, "", "<C-j>oo", telescope.find_files, "open in current window")
+set_keymap(inv, "", "<C-j>oc", telescope.find_files, "open in current window")
+set_keymap(inv, "", "<C-j>oh", "<cmd>vs<cr><cmd>wincmd l<cr><cmd>Telescope find_files<cr>", "open in new window (right)")
+set_keymap(inv, "", "<C-j>ov", "<cmd>sp<cr><cmd>wincmd j<cr><cmd>Telescope find_files<cr>", "open in new window (up)")
+set_keymap(inv, "", "<C-j>ot", "<cmd>tab new<cr><cmd>Telescope find_files<cr>", "open in new tab")
 
 -- s (spellcheck)
-vim.keymap.set(all_modes, "<C-j>s", telescope.spell_suggest, keymap_flags("spellcheck on current word"))
+set_keymap(inv, "", "<C-j>s", telescope.spell_suggest, "spellcheck on current word")
 
--- Ctrl + ...
-vim.keymap.set(all_modes, "<C-s>", "<cmd>w<cr>", keymap_flags("save"))
-vim.keymap.set(all_modes, "<C-S-s>", "<cmd>w<cr>", keymap_flags("save all"))
-vim.keymap.set(all_modes, "<C-q>", "<cmd>q<cr>", keymap_flags("quit"))
-vim.keymap.set(all_modes, "<C-S-q>", "<cmd>qa<cr>", keymap_flags("quit all"))
+-- Ctrl + ... (delete)
+-- Note: for some reason Ctrl+BS is <BS>, not <C-BS>...
+-- single word
+set_keymap(in_, n, "<BS>", "db", "delete word before cursor")
+set_keymap(in_, n, "<C-Del>", "de", "delete word after cursor")
+-- line
+set_keymap(in_, n, "<C-S-BS>", "d^", "delete line before cursor")
+set_keymap(in_, n, "<C-S-Del>", "_d$", "delete line after cursor")
+-- Copy-paste
+set_keymap(v, "", "<C-c>", "y", "copy")
+set_keymap(v, "", "<C-c>", "y", "copy")
+set_keymap(i, "", "<C-v>", "p", "paste")
+set_keymap(v, "", "<C-v>", "p", "paste")
+
+
+-- Ctrl + ... (file management)
+set_keymap(inv, "", "<C-s>", "<cmd>w<cr>", "save")
+set_keymap(inv, "", "<C-S-s>", "<cmd>w<cr>", "save all")
+set_keymap(inv, "", "<C-q>", "<cmd>q<cr>", "quit")
+set_keymap(inv, "", "<C-S-q>", "<cmd>qa<cr>", "quit all")
 
 
 -- Other
