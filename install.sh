@@ -42,42 +42,6 @@ function cleanup {
 
 # Tools
 
-function configure_code {
-  local command config_dir extensions_file
-  case "$(get_machine_type)" in
-    infrastructure)
-      echo 'Infrastructure machine, skipping.'
-      return 0;;
-    personal)
-      command='codium'
-      config_dir="$HOME/.config/VSCodium"
-      extensions_file='code/extensions';;
-    work)
-      command='code'
-      config_dir='/Users/divy/Library/Application Support/Code/'
-      extensions_file='code/extensions_work';;
-  esac
-
-  install_with_prompt --mode=644 code/settings.json "$config_dir/User/settings.json"
-
-  mapfile -t missing_extensions < <(
-    comm -23 <(sort "$extensions_file") \
-         <("$command" --list-extensions | sort)
-  )
-  if [[ "${#missing_extensions[@]}" -eq 0 ]]; then
-    printf 'Code extensions are up to date.\n'
-  else
-    echo "Missing Code extensions:"
-    printf '%s\n' "${missing_extensions[@]}"
-    if confirm 'Install missing Code extensions?'; then
-      printf '%s\n' "${missing_extensions[@]}" \
-      | xargs -n 1 "$command" --install-extension
-    else
-      echo "Skipping."
-    fi
-  fi
-}
-
 function configure_fluxbox {
   local regex apps
   if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
