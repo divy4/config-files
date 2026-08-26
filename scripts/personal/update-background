@@ -1,32 +1,81 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
-IMAGE_DIR="$HOME/.config/i3/backgrounds"
+IMAGE_DIR="$HOME/.config/sway/backgrounds"
 
-if [[ ! -d "$IMAGE_DIR" ]]; then
-  echo "Error: image directory $IMAGE_DIR does not exist."
+
+function main {
+  case "${1:-set}" in
+  help|--help|-h)
+    cat <<EOF
+Usage: update-background [help|print|get|set]
+
+help:  Print this message
+print: Print a random background image path
+get:   Print the current background.
+set:   Set a random background. (default)
+EOF
+  ;;
+  print)
+    choose_background;;
+  get)
+    get_background;;
+  set)
+    set_background;;
+  *)
+    error "Unrecognized command '$1'"
+  esac
+}
+
+
+# Set a random background
+function set_background {
+  local background
+  background="$(choose_background)"
+  swaymsg "output * bg '$background' fill"
+  echo "Set background to $background"
+}
+
+
+# Prints a random background file
+function choose_background {
+  local current next
+  # Ensure directory exists
+  [[ ! -d "$IMAGE_DIR" ]] && error "Image directory $IMAGE_DIR does not exist."
+
+  # Find the current background, or default to an invalid char
+  if ! current="$(get_background)"; then
+    current="|"
+  fi
+
+  # Choose a random image that isn't the current one
+  next="$(
+    find "$IMAGE_DIR" -type f '(' \
+      -name '*.jpg' -or -name '.jpeg' -or -name '*.png' \
+    ')' \
+    | grep --invert-match --fixed-strings "$current" \
+    | shuf -n 1
+  )"
+
+  # Ensure we found an image
+  [[ -z "$next" ]] && error "No .jpg/.jpeg/.png files found in $IMAGE_DIR."
+
+  echo "$next"
+}
+
+
+# Prints the current background
+function get_background {
+  ps aux \
+  | grep swaybg \
+  | grep --perl-regexp --only-matching '[^\s]+(png|jpg|jpeg)'
+}
+
+
+# Echo to stderr and exit
+function error {
+  >&2 echo "Error: $@"
   exit 1
-fi
+}
 
-# Get the current background (or output an invalid path character if one isn't found)
-current_image="$(
-  grep --perl-regexp --only-matching "(?<=').*(?=')" "$HOME/.fehbg" \
-  || echo '|'
-)"
-
-image="$(
-  find "$IMAGE_DIR" -type f '(' \
-    -name '*.jpg' -or -name '.jpeg' -or -name '*.png' \
-  ')' \
-  | grep --invert-match --fixed-strings "$current_image" \
-  | shuf -n 1
-)"
-
-if [[ -z "$image" ]]; then
-  echo "Error: no .jpg/.jpeg/.png files found in $IMAGE_DIR."
-  exit 1
-fi
-
-feh --bg-fill "$image"
-echo "Set background to $image"
-
+main "$@"

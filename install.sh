@@ -259,6 +259,29 @@ function configure_systemd {
   done
 }
 
+function configure_wayland {
+  if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
+    echo 'Work or infrastructure machine, skipping.'
+    return 0
+  fi
+
+  # Create copy of i3status-rs primary config with primary-only blocks taken out
+  local secondary_config
+  secondary_config="$(mktemp)"
+  cat wayland/i3status-rs-config.toml > "$secondary_config"
+  sed --in-place --null-data "s/$I3_START_MARKER.*$I3_END_MARKER//g" "$secondary_config"
+
+  # Sway
+  install_with_prompt --parents-mode=755 --mode=644 wayland/sway/config ~/.config/sway/config
+  # Foot
+  install_with_prompt --parents-mode=755 --mode=644 wayland/foot.ini ~/.config/foot/foot.ini
+  # i3status-rs
+  install_with_prompt --mode=644 wayland/i3status-rs-config.toml ~/.config/sway/i3status-rs-config-primary.toml
+  install_with_prompt --mode=644 "$secondary_config" ~/.config/sway/i3status-rs-config-secondary.toml
+
+  rm "$secondary_config"
+}
+
 function configure_x {
   local sources source dest
   if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then

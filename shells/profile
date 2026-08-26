@@ -431,7 +431,7 @@ if [[ "$PROFILE_OS_ID" == 'mac' ]]; then
 fi
 
 # If we can run X, and we're not currently in an x session...
-if command -v sway &>/dev/null && [[ -z "$WAYLAND_DISPLAY" ]]; then
+if command -v sway &>/dev/null && [[ -z "$DISPLAY" ]]; then
   # Run sway
   echo 'Starting sway in 1 second, press ctrl+c to interrupt...'
   if sleep 1; then

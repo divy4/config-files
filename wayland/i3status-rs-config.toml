@@ -1,0 +1,244 @@
+icons_format = "{icon}"
+
+[theme]
+theme = "solarized-dark"
+[icons]
+icons = "awesome4"
+[icons.overrides]
+gpu = [
+    "",
+]
+
+### PRIMARY ONLY START MARKER ###
+
+[[block]]
+block = "focused_window"
+format = "$title| "
+
+[[block]]
+block = "music"
+format = "{$prev $play $next $combo.str(max_w:10,rot_interval:5) |}"
+
+[[block]]
+block = "sound"
+format = "$icon {$volume.bar(v:true)|}"
+format_alt = "$icon {$volume.eng(w:2)|}"
+driver="pulseaudio"
+
+[[block]]
+block = "bluetooth"
+mac = "88:C9:E8:58:F5:55"
+format = "$icon {$percentage.bar(v:true)|}"
+disconnected_format = "$icon"
+
+[[block]]
+block = "bluetooth"
+mac = "AC:8E:BD:67:12:C5"
+format = "$icon {$percentage.bar(v:true)|}"
+disconnected_format = "$icon"
+
+[[block]]
+block = "custom"
+format = " $text.pango-str()"
+json = true
+cycle = ["/usr/local/bin/mouse get 'Razer DeathAdder V3' --format=i3status-bar", "/usr/local/bin/mouse get 'Razer DeathAdder V3' --format=i3status-text"]
+interval = 60
+[[block.click]]
+button = "right"
+cmd = "/usr/local/bin/mouse set 'Razer DeathAdder V3' --dpi '4000'"
+sync = true
+update = true
+[[block.click]]
+button = "middle"
+cmd = "/usr/local/bin/mouse set 'Razer DeathAdder V3' --dpi '4000'"
+sync = true
+update = true
+[[block.click]]
+button = "wheel_up"
+cmd = "/usr/local/bin/mouse set 'Razer DeathAdder V3' --dpi '*1.5'"
+sync = true
+update = true
+[[block.click]]
+button = "wheel_down"
+cmd = "/usr/local/bin/mouse set 'Razer DeathAdder V3' --dpi '/1.5'"
+sync = true
+update = true
+
+[[block]]
+block = "net"
+interval = 10
+format = "^icon_net_wired ^icon_net_down $speed_down.eng(prefix:K) ^icon_net_up $speed_up.eng(prefix:K)"
+inactive_format = "^icon_net_wired Disconnected"
+[[block.click]]
+button = "middle"
+cmd = "network toggle"
+
+[[block]]
+block = "disk_space"
+interval = 600
+format = "$icon / $percentage.bar(v:true)"
+format_alt = "$icon / $percentage"
+info_type = "used"
+path = "/"
+alert_unit = "GB"
+warning = 175
+alert = 220
+
+[[block]]
+block = "disk_space"
+interval = 600
+format = "home $percentage.bar(v:true)"
+format_alt = "home $percentage"
+info_type = "used"
+path = "/home"
+alert_unit = "GB"
+warning = 1200
+alert = 1400
+
+[[block]]
+block = "disk_space"
+interval = 600
+format = "data $percentage.bar(v:true)"
+format_alt = "data $percentage"
+info_type = "used"
+path = "/home/dan/data"
+alert_unit = "GB"
+warning = 1800
+alert = 2100
+
+[[block]]
+block = "disk_space"
+interval = 600
+format = "backup $percentage.bar(v:true)"
+format_alt = "backup $percentage"
+info_type = "used"
+path = "/backup"
+alert_unit = "GB"
+warning = 1400
+alert = 1600
+
+[[block]]
+block = "memory"
+interval = 5
+format = " $swap_used_percents.bar(v:true)"
+format_alt = " $swap_used_percents"
+warning_swap = 1
+critical_swap = 50
+
+[[block]]
+block = "memory"
+interval = 5
+format = "$icon $mem_used_percents.bar(v:true)"
+format_alt = "$icon $mem_used_percents"
+warning_mem = 50
+critical_mem = 90
+
+[[block]]
+block = "cpu"
+interval = 5
+format = "$icon $barchart"
+format_alt = "$icon $utilization"
+info_cpu = 20
+warning_cpu = 50
+critical_cpu = 90
+
+[[block]]
+block = "temperature"
+interval = 5
+format = "$icon avg $average.bar(v:true,max_value:80) max $max.bar(v:true,max_value:80)"
+format_alt = "$icon avg $average max $max"
+idle = 70
+good = 50
+info = 75
+warning = 80
+
+[[block]]
+block = "nvidia_gpu"
+interval = 5
+format = " $power.bar(v:true)  $memory.bar(v:true,max_value:11000000000)  $utilization.bar(v:true)  $temperature.bar(v:true,max_value:80)  $fan_speed.bar(v:true)"
+idle = 50
+good = 70
+info = 75
+warning = 80
+
+[[block]]
+block = "service_status"
+service = "nvidia-fan-control"
+active_format = ""
+inactive_format = ""
+inactive_state = "Warning"
+[[block.click]]
+button = "middle"
+cmd = "xterm -e 'journalctl --unit nvidia-fan-control.service --follow --lines=3600 --output=cat'"
+
+### PRIMARY ONLY END MARKER ###
+
+[[block]]
+block = "toggle"
+format = "󰌌"
+command_state = "true"
+command_on = "/usr/bin/onboard"
+command_off = "/usr/bin/onboard"
+
+[[block]]
+block = "toggle"
+format = "K"
+command_state = "true"
+command_on = "/usr/bin/firefox --new-window 'https://kuroiru.co/app'"
+command_off = "/usr/bin/firefox --new-window 'https://kuroiru.co/app'"
+
+[[block]]
+block = "toggle"
+format = ""
+command_state = "true"
+command_on = "/usr/bin/firefox --new-window 'https://www.youtube.com'"
+command_off = "/usr/bin/firefox --new-window 'https://www.youtube.com'"
+
+[[block]]
+block = "toggle"
+format = ""
+command_state = "true"
+command_on = "/usr/bin/firefox"
+command_off = "/usr/bin/firefox"
+
+[[block]]
+block = "toggle"
+format = ""
+command_state = "true"
+command_on = "/usr/bin/steam steam://open/games"
+command_off = "/usr/bin/steam steam://open/games"
+
+[[block]]
+block = "toggle"
+format = ""
+command_state = "true"
+command_on = "/usr/local/bin/update-background"
+command_off = "/usr/local/bin/update-background"
+
+[[block]]
+block = "time"
+format = "$timestamp.datetime(f:%R)"
+interval = 5
+
+[[block]]
+block = "menu"
+text = ""
+
+[[block.items]]
+display = "-&gt; Exit sway &lt;-"
+confirm_msg = "-&gt; Exit sway &lt;-"
+cmd = "swaymsg exit"
+
+[[block.items]]
+display = "-&gt; Sleep &lt;-"
+cmd = "systemctl suspend"
+
+[[block.items]]
+display = "-&gt; Reboot &lt;-"
+confirm_msg = "-&gt; Reboot? &lt;-"
+cmd = "reboot"
+
+[[block.items]]
+display = "-&gt; Shut down &lt;-"
+confirm_msg = "-&gt; Shut down? &lt;-"
+cmd = "shutdown now"
