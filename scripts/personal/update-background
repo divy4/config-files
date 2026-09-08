@@ -66,6 +66,8 @@ function choose_background {
 
 # Prints the current background
 function get_background {
+  # TODO: replace with pgrep
+  #shellcheck disable=SC2009
   ps aux \
   | grep swaybg \
   | grep --perl-regexp --only-matching '[^\s]+(png|jpg|jpeg)'
@@ -74,7 +76,7 @@ function get_background {
 
 # Echo to stderr and exit
 function error {
-  >&2 echo "Error: $@"
+  >&2 echo "Error: $*"
   exit 1
 }
 
