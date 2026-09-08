@@ -13,7 +13,7 @@ gpu = [
 
 [[block]]
 block = "focused_window"
-format = "$title|"
+format = "$title| "
 
 [[block]]
 block = "music"
@@ -21,20 +21,20 @@ format = "{$prev $play $next $combo.str(max_w:10,rot_interval:5) |}"
 
 [[block]]
 block = "sound"
-format = " $icon {$volume.bar(v:true) |}"
-format_alt = " $icon {$volume.eng(w:2) |}"
+format = "$icon {$volume.bar(v:true)|}"
+format_alt = "$icon {$volume.eng(w:2)|}"
 driver="pulseaudio"
 
 [[block]]
 block = "bluetooth"
 mac = "88:C9:E8:58:F5:55"
-format = "$icon{ $percentage.bar(v:true) |}"
+format = "$icon {$percentage.bar(v:true)|}"
 disconnected_format = "$icon"
 
 [[block]]
 block = "bluetooth"
 mac = "AC:8E:BD:67:12:C5"
-format = "$icon{ $percentage.bar(v:true) |}"
+format = "$icon {$percentage.bar(v:true)|}"
 disconnected_format = "$icon"
 
 [[block]]
@@ -120,16 +120,16 @@ alert = 1600
 [[block]]
 block = "memory"
 interval = 5
-format = " $swap_used_percents.bar(v:true)"
-format_alt = " $swap_used_percents"
+format = "$swap_used_percents.bar(v:true)"
+format_alt = "$swap_used_percents"
 warning_swap = 1
 critical_swap = 50
 
 [[block]]
 block = "memory"
 interval = 5
-format = "$icon $mem_used_percents.bar(v:true)"
-format_alt = "$icon $mem_used_percents"
+format = "$icon$mem_used_percents.bar(v:true)"
+format_alt = "$icon$mem_used_percents"
 warning_mem = 50
 critical_mem = 90
 
@@ -225,9 +225,9 @@ block = "menu"
 text = ""
 
 [[block.items]]
-display = "-&gt; Exit i3 &lt;-"
-confirm_msg = "-&gt; Exit i3? &lt;-"
-cmd = "i3-msg exit"
+display = "-&gt; Exit sway &lt;-"
+confirm_msg = "-&gt; Exit sway &lt;-"
+cmd = "swaymsg exit"
 
 [[block.items]]
 display = "-&gt; Sleep &lt;-"

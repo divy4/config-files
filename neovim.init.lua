@@ -296,7 +296,7 @@ set_keymap(inv, "", "<C-j>s", telescope.spell_suggest, "spellcheck on current wo
 -- Ctrl + ... (delete)
 -- Note: for some reason Ctrl+BS is <BS>, not <C-BS>...
 -- single word
-set_keymap(in_, n, "<BS>", "db", "delete word before cursor")
+set_keymap(in_, n, "<C-BS>", "db", "delete word before cursor")
 set_keymap(in_, n, "<C-Del>", "de", "delete word after cursor")
 -- line
 set_keymap(in_, n, "<C-S-BS>", "d^", "delete line before cursor")

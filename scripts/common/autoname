@@ -212,8 +212,9 @@ class Chunker:
         chunked_files, chunk_dirs = self.__get_chunked_paths()
         self.__execute_chunking(chunked_files, chunk_dirs)
 
-
-    def __get_chunked_paths(self) -> Tuple[Dict[int, List[NumberedPath]], Dict[int, NumberedPath]]:
+    def __get_chunked_paths(
+        self,
+    ) -> Tuple[Dict[int, List[NumberedPath]], Dict[int, NumberedPath]]:
         """Returns dicts of files and directories for each chunk."""
         children = self.__root_path.get_numbered_children(self.__extensions_regex)
 

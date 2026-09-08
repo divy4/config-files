@@ -42,79 +42,6 @@ function cleanup {
 
 # Tools
 
-function configure_code {
-  local command config_dir extensions_file
-  case "$(get_machine_type)" in
-    infrastructure)
-      echo 'Infrastructure machine, skipping.'
-      return 0;;
-    personal)
-      command='codium'
-      config_dir="$HOME/.config/VSCodium"
-      extensions_file='code/extensions';;
-    work)
-      command='code'
-      config_dir='/Users/divy/Library/Application Support/Code/'
-      extensions_file='code/extensions_work';;
-  esac
-
-  install_with_prompt --mode=644 code/settings.json "$config_dir/User/settings.json"
-
-  mapfile -t missing_extensions < <(
-    comm -23 <(sort "$extensions_file") \
-         <("$command" --list-extensions | sort)
-  )
-  if [[ "${#missing_extensions[@]}" -eq 0 ]]; then
-    printf 'Code extensions are up to date.\n'
-  else
-    echo "Missing Code extensions:"
-    printf '%s\n' "${missing_extensions[@]}"
-    if confirm 'Install missing Code extensions?'; then
-      printf '%s\n' "${missing_extensions[@]}" \
-      | xargs -n 1 "$command" --install-extension
-    else
-      echo "Skipping."
-    fi
-  fi
-}
-
-function configure_fluxbox {
-  local regex apps
-  if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
-    echo 'Work or infrastructure machine, skipping.'
-    return 0
-  elif [[ ! -d "$HOME/.fluxbox" ]]; then
-    echo 'No fluxbox directory, skipping.'
-    return 0
-  fi
-
-  # Render fluxbox menu with machine-specific tools installed
-
-  # Figure out what apps exist on the system.
-  regex="^(\s*)#\s*autoexec\s*(.*\{(.*?)\})\s*$"
-  mapfile -t apps < <(
-    grep '# autoexec' fluxbox/menu \
-    | sed --regexp-extended "s/$regex/\3/g" \
-    | grep_if_command
-  )
-
-  # Uncomment 'autoexec' lines of commands that exist, then remove the rest.
-  regex="^(\s*)#\s*autoexec\s*(.*\{($(join '|' "${apps[@]}"))\})\s*$"
-  sed --regexp-extended "s/$regex/\1\2/g" fluxbox/menu \
-  | grep --invert-match '#\s*autoexec' \
-  > "$TEMP_DIR/menu"
-
-  # Copy files
-  install_with_prompt --mode=644 fluxbox/styles/black ~/.fluxbox/styles/black
-  install_with_prompt --mode=644 fluxbox/apps ~/.fluxbox/apps
-  install_with_prompt --mode=644 fluxbox/groups ~/.fluxbox/groups
-  install_with_prompt --mode=644 fluxbox/init ~/.fluxbox/init
-  install_with_prompt --mode=644 fluxbox/keys ~/.fluxbox/keys
-  install_with_prompt --mode=644 "$TEMP_DIR/menu" ~/.fluxbox/menu
-  install_with_prompt --mode=644 fluxbox/slitlist ~/.fluxbox/slitlist
-  install_with_prompt --mode=644 fluxbox/startup ~/.fluxbox/startup
-}
-
 function configure_gamemode {
   if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
     echo 'Work or infrastructure machine, skipping.'
@@ -175,32 +102,6 @@ function configure_git {
   fi
   # Generate ssh key for github
   generate_ssh_key "$(hostname)-github" ~/.ssh/github
-}
-
-I3_START_MARKER="### PRIMARY ONLY START MARKER ###"
-I3_END_MARKER="### PRIMARY ONLY END MARKER ###"
-
-function configure_i3 {
-  if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
-    echo 'Work or infrastructure machine, skipping.'
-    return 0
-  elif [[ ! -d "$HOME/.config/i3" ]]; then
-    echo 'No i3 directory, skipping.'
-    return 0
-  fi
-
-  # Create copy of primary config with primary-only blocks taken out
-  local secondary_config
-  secondary_config="$(mktemp)"
-  cp i3/i3status-rs-config.toml "$secondary_config"
-  sed --in-place --null-data "s/$I3_START_MARKER.*$I3_END_MARKER//g" "$secondary_config"
-
-  install_with_prompt --mode=644 i3/config ~/.config/i3/config
-  install_with_prompt --mode=644 i3/i3status-rs-config.toml ~/.config/i3/i3status-rs-config-primary.toml
-  install_with_prompt --mode=644 "$secondary_config" ~/.config/i3/i3status-rs-config-secondary.toml
-  install_with_prompt --sudo --mode=755 i3/i3-keep-awake /usr/local/bin/i3-keep-awake
-
-  rm "$secondary_config"
 }
 
 function configure_nano {
@@ -330,6 +231,32 @@ function configure_systemd {
       error "Unsupported systemd unit type for unit $unit."
     esac
   done
+}
+
+WAYLAND_START_MARKER="### PRIMARY ONLY START MARKER ###"
+WAYLAND_END_MARKER="### PRIMARY ONLY END MARKER ###"
+
+function configure_wayland {
+  if [[ "$(get_machine_type)" =~ ^(work|infrastructure)$ ]]; then
+    echo 'Work or infrastructure machine, skipping.'
+    return 0
+  fi
+
+  # Create copy of i3status-rs primary config with primary-only blocks taken out
+  local secondary_config
+  secondary_config="$(mktemp)"
+  cat wayland/i3status-rs-config.toml > "$secondary_config"
+  sed --in-place --null-data "s/$WAYLAND_START_MARKER.*$WAYLAND_END_MARKER//g" "$secondary_config"
+
+  # Sway
+  install_with_prompt --parents-mode=755 --mode=644 wayland/sway/config ~/.config/sway/config
+  # Foot
+  install_with_prompt --parents-mode=755 --mode=644 wayland/foot.ini ~/.config/foot/foot.ini
+  # i3status-rs
+  install_with_prompt --mode=644 wayland/i3status-rs-config.toml ~/.config/sway/i3status-rs-config-primary.toml
+  install_with_prompt --mode=644 "$secondary_config" ~/.config/sway/i3status-rs-config-secondary.toml
+
+  rm "$secondary_config"
 }
 
 function configure_x {

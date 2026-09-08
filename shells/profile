@@ -43,6 +43,11 @@ fi
 
 ##### Environment variables #####
 
+# Stop sway from complaining
+export SWAY_UNSUPPORTED_GPU='true'
+# Use vulkan as WayLand Renderer
+export WLR_RENDERER=vulkan
+
 # Fix konsole TERM value
 if [ -n "$KONSOLE_VERSION" ]; then
   export TERM='konsole'
@@ -73,9 +78,9 @@ fi
 # enable docker buildkit
 export DOCKER_BUILDKIT=1
 
-# Set nano as default editor for noninteractive sessions
-export VISUAL='nano'
-export EDITOR='nano'
+# Set neovim as default editor
+export VISUAL='nvim'
+export EDITOR='nvim'
 
 # If not running interactively, stop here.
 case "$-" in
@@ -84,15 +89,6 @@ case "$-" in
   *)
     return;;
 esac
-
-# ...and set VS Code as default editor for interactive sessions
-if command -v codium >/dev/null; then
-  export VISUAL='codium --wait'
-  export EDITOR='codium --wait'
-elif command -v code >/dev/null; then
-  export VISUAL='code --wait'
-  export EDITOR='code --wait'
-fi
 
 # Set qt configuration tool
 export QT_QPA_PLATFORMTHEME='qt6ct'
@@ -437,10 +433,10 @@ if [[ "$PROFILE_OS_ID" == 'mac' ]]; then
 fi
 
 # If we can run X, and we're not currently in an x session...
-if command -v startx &>/dev/null && [[ -z "$DISPLAY" ]]; then
-  # Run X
-  echo 'Starting X in 1 second, press ctrl+c to interrupt...'
+if command -v sway &>/dev/null && [[ -z "$DISPLAY" ]]; then
+  # Run sway
+  echo 'Starting sway in 1 second, press ctrl+c to interrupt...'
   if sleep 1; then
-    startx
+    sway
   fi
 fi
