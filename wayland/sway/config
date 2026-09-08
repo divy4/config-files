@@ -23,6 +23,9 @@ exec swayidle -w \
        resume 'swaymsg "output * power on"' \
        before-sleep 'swaylock --daemonize --image "$(/usr/local/bin/update-background print)"'
 
+# Start polkit agent
+exec /usr/lib/polkit-kde-authentication-agent-1
+
 # Input configuration
 
 input type:pointer {

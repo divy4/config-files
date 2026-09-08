@@ -103,8 +103,8 @@ format_alt = "data $percentage"
 info_type = "used"
 path = "/home/dan/data"
 alert_unit = "GB"
-warning = 1800
-alert = 2100
+warning = 2600
+alert = 3300
 
 [[block]]
 block = "disk_space"
