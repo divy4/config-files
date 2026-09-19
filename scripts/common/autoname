@@ -5,7 +5,7 @@ from collections import defaultdict
 from functools import cached_property
 import enum
 import re
-from pathlib import Path
+from pathlib import Path, PurePath
 import signal
 import subprocess
 import sys
@@ -103,6 +103,13 @@ class NumberedPath(Path):
             paths.add(x)
         return paths
 
+    def __lt__(self, other: PurePath) -> bool:
+        if not isinstance(other, NumberedPath):
+            raise ValueError(f"Cannot compare between {type(self)} and {type(other)}.")
+        self_numbers = (self.number_always, self.subnumber or 0)
+        other_numbers = (other.number_always, other.subnumber or 0)
+        return self_numbers < other_numbers
+
 
 class Renamer:
     """A class for renaming files in a folder."""
@@ -122,7 +129,7 @@ class Renamer:
         numbered_paths = file.parent.get_numbered_children(
             self.__extension_pattern, file
         )
-        next_num = get_next_number(numbered_paths)
+        next_num, next_subnum = get_next_numbers(numbered_paths)
 
         # Ignore files that already fit in
         if file.number is not None and file.number <= next_num:
@@ -131,16 +138,17 @@ class Renamer:
 
         # If we've haven't renamed recently, just rename it to the next number
         if event_time > self.__last_rename_time + self.__pairing_window:
-            self.rename(file, next_num)
+            self.rename(file, next_num, next_subnum)
 
         # Otherwise, subnumber it
         else:
             # Filter to just files with the current number
             curr_num = get_current_number(numbered_paths)
             curr_num_paths = [x for x in numbered_paths if x.number == curr_num]
-            next_subnum = get_next_subnumber(curr_num_paths)
 
             # Subnumber preexisting files
+            if next_subnum is None:
+                next_subnum = 0
             for path in curr_num_paths:
                 if not path.is_subnumbered:
                     self.rename(path, curr_num, next_subnum)
@@ -312,25 +320,15 @@ def get_current_number(paths: Collection[NumberedPath]) -> int:
     return max(x.number_always for x in paths)
 
 
-def get_next_number(paths: Collection[NumberedPath]) -> int:
+def get_next_numbers(paths: Collection[NumberedPath]) -> Tuple[int, int | None]:
     """Returns what the next number should be, given a set of numbered paths."""
     if len(paths) == 0:
-        return 0
-    return get_current_number(paths) + 1
-
-
-def get_next_subnumber(paths: Collection[NumberedPath]) -> int:
-    """Returns what the next subnumber should be, given a set of numbered paths."""
-    if len(paths) == 0:
-        return 0
-    # Ensure all paths have the same number
-    first = next(iter(paths))
-    assert all(
-        x.number == first.number for x in paths
-    ), "Subnumber can only be computed on paths with the same number."
-    # If there is an un-subnumbered file, pretend it's a -1 subnumber
-    # (meaning that -0 is the next subnumber)
-    return max(x.subnumber or -1 for x in paths) + 1
+        return 0, None
+    curr = max(paths)
+    if curr.is_subnumbered:
+        return curr.number_always, curr.subnumber_always + 1
+    else:
+        return curr.number_always + 1, None
 
 
 # File monitoring
