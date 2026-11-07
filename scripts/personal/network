@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-INTERFACE="eno2"
+INTERFACE="enp8s0"
 
 action="${1:-}"
 
