@@ -255,6 +255,8 @@ function configure_wayland {
   # i3status-rs
   install_with_prompt --mode=644 wayland/i3status-rs-config.toml ~/.config/sway/i3status-rs-config-primary.toml
   install_with_prompt --mode=644 "$secondary_config" ~/.config/sway/i3status-rs-config-secondary.toml
+  # keep-awake
+  install_with_prompt --sudo --mode=755 --owner=root --group=root wayland/keep-awake /usr/local/bin/keep-awake
 
   rm "$secondary_config"
 }
