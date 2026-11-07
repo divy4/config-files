@@ -18,6 +18,7 @@ output HDMI-A-1 resolution 3840x2160@143.998hz position 0 1440
 
 # Idle configuration
 exec swayidle -w \
+       timeout 290 '/usr/local/bin/keep-awake' \
        timeout 300 'swaylock --daemonize --image "$(/usr/local/bin/update-background print)"' \
        timeout 600 'swaymsg "output * power off"' \
        resume 'swaymsg "output * power on"' \
