@@ -411,12 +411,12 @@ function grep_if_command {
 # Compares two files or directories. Returns 0 if no changes are present.
 function compare_paths {
   local a b
-  if [[ -a "$1" ]]; then
+  if [[ -e "$1" ]]; then
     a="$1"
   else
     a=/dev/null
   fi
-  if [[ -a "$2" ]]; then
+  if [[ -e "$2" ]]; then
     b="$2"
   else
     b=/dev/null

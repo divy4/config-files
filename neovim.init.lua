@@ -162,6 +162,8 @@ require('telescope').setup{
 
 -- General settings
 
+-- Cursor
+vim.o.virtualedit = 'onemore' -- Allow cursor to go one past the end of the line
 -- Markers
 vim.o.number = true -- Show line numbers
 vim.wo.relativenumber = true -- Show relative line numbers
@@ -177,6 +179,7 @@ vim.g.srcery_bold = 0 -- Don't use bold
 vim.g.srcery_italic = 0 -- Don't use italic
 vim.cmd.colorscheme('srcery')
 -- Other
+vim.o.clipboard = "unnamedplus" -- Copy to system clipboard
 vim.o.termguicolors = true -- Enable 24-bit colors
 vim.g.mapleader = "," -- Set leader key to comma
 
@@ -296,11 +299,12 @@ set_keymap(inv, "", "<C-j>s", telescope.spell_suggest, "spellcheck on current wo
 -- Ctrl + ... (delete)
 -- Note: for some reason Ctrl+BS is <BS>, not <C-BS>...
 -- single word
-set_keymap(in_, n, "<C-BS>", "dvb", "delete word before cursor")
+set_keymap(in_, n, "<C-BS>", "db", "delete word before cursor")
 set_keymap(in_, n, "<C-Del>", "de", "delete word after cursor")
 -- line
 set_keymap(in_, n, "<C-S-BS>", "d^", "delete line before cursor")
 set_keymap(in_, n, "<C-S-Del>", "_d$", "delete line after cursor")
+set_keymap(in_, n, "<C-x>", "dd", "delete line")
 -- Copy-paste
 set_keymap(v, "", "<C-c>", "y", "copy")
 set_keymap(v, "", "<C-c>", "y", "copy")
@@ -314,6 +318,10 @@ set_keymap(inv, "", "<C-S-s>", "<cmd>w<cr>", "save all")
 set_keymap(inv, "", "<C-q>", "<cmd>q<cr>", "quit")
 set_keymap(inv, "", "<C-S-q>", "<cmd>qa<cr>", "quit all")
 
+
+-- Ctrl + ... (editing)
+set_keymap(in_, n, "<C-z>", "u", "undo")
+set_keymap(in_, n, "<C-S-z>", "<C-R>", "redo")
 
 -- Other
 
